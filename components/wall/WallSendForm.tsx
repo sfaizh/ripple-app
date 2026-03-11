@@ -14,15 +14,15 @@ export function WallSendForm({ recipientUsername }: WallSendFormProps) {
     return (
       <div className="text-center py-8">
         <div className="text-5xl mb-4">🎉</div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+        <h3 className="text-lg font-semibold text-ink mb-2">
           Compliment sent!
         </h3>
-        <p className="text-gray-500 text-sm mb-6">
+        <p className="text-ink-muted text-sm mb-6">
           Your kind words are on their way to @{recipientUsername}. It will appear in their inbox after AI review.
         </p>
         <button
           onClick={() => setSent(false)}
-          className="text-purple-600 hover:underline text-sm font-medium"
+          className="text-primary hover:underline text-sm font-medium"
         >
           Send another
         </button>

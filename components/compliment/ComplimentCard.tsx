@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Linkedin, Users, UserPlus, Sparkles } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -25,10 +26,10 @@ interface ComplimentCardProps {
 }
 
 const categoryColors: Record<string, string> = {
-  professional: 'bg-blue-100 text-blue-800 border-blue-200',
-  creative: 'bg-purple-100 text-purple-800 border-purple-200',
-  personal_growth: 'bg-green-100 text-green-800 border-green-200',
-  just_because: 'bg-pink-100 text-pink-800 border-pink-200',
+  professional: 'bg-[#dff0e7] text-[#3d405b] border-[#a0c5b3]',
+  creative: 'bg-[#fde8e0] text-[#ab3f21] border-[#e7957e]',
+  personal_growth: 'bg-[#f2efd9] text-[#3d405b] border-[#e6dfb3]',
+  just_because: 'bg-[#fef0d3] text-[#875b10] border-[#f4d5a4]',
 };
 
 const categoryLabels: Record<string, string> = {
@@ -38,11 +39,11 @@ const categoryLabels: Record<string, string> = {
   just_because: 'Just Because',
 };
 
-const cluePrefix: Record<string, string> = {
-  linkedin: '💼 Someone who follows you on LinkedIn',
-  company: '🏢 A colleague from your company',
-  recent: '✨ Someone you met recently',
-  generic: '💫 Someone special',
+const clueConfig: Record<string, { icon: React.ElementType; label: string }> = {
+  linkedin: { icon: Linkedin, label: 'Someone who follows you on LinkedIn' },
+  company: { icon: Users, label: 'A colleague from your company' },
+  recent: { icon: UserPlus, label: 'Someone you met recently' },
+  generic: { icon: Sparkles, label: 'Someone special' },
 };
 
 function timeAgo(dateStr: string): string {
@@ -67,18 +68,16 @@ export function ComplimentCard({
 
   const handleReveal = async () => {
     if (isRevealed || isAnimating) return;
-
     setIsAnimating(true);
-
-    if (onReveal) {
-      await onReveal(compliment.id);
-    }
-
+    if (onReveal) await onReveal(compliment.id);
     setTimeout(() => {
       setIsRevealed(true);
       setIsAnimating(false);
     }, 600);
   };
+
+  const clue = clueConfig[compliment.clueType];
+  const ClueIcon = clue.icon;
 
   return (
     <Card className="p-6 hover:shadow-md transition-shadow duration-200">
@@ -89,16 +88,17 @@ export function ComplimentCard({
         </Badge>
         <div className="flex items-center gap-2">
           {!compliment.isRead && !isRevealed && (
-            <span className="inline-block w-2 h-2 rounded-full bg-purple-500" title="Unread" />
+            <span className="inline-block w-2 h-2 rounded-full bg-primary" title="Unread" />
           )}
-          <span className="text-xs text-gray-400">{timeAgo(compliment.createdAt)}</span>
+          <span className="text-xs text-ink-muted">{timeAgo(compliment.createdAt)}</span>
         </div>
       </div>
 
-      {/* Clue text */}
-      <p className="text-sm text-gray-500 mb-4 italic">
-        {compliment.clueText || cluePrefix[compliment.clueType]} said...
-      </p>
+      {/* Clue */}
+      <div className="flex items-center gap-1.5 text-sm text-ink-muted mb-4 italic">
+        <ClueIcon className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+        <span>{compliment.clueText || clue.label} said...</span>
+      </div>
 
       {/* Reveal */}
       <RevealAnimation
@@ -106,12 +106,12 @@ export function ComplimentCard({
         isAnimating={isAnimating}
         onClick={handleReveal}
       >
-        <p className="text-base leading-relaxed text-gray-800 py-2">{compliment.message}</p>
+        <p className="text-base leading-relaxed text-ink py-2">{compliment.message}</p>
       </RevealAnimation>
 
       {/* Reply CTA */}
       {isRevealed && showReplyButton && onReply && (
-        <div className="mt-4 pt-4 border-t border-gray-100">
+        <div className="mt-4 pt-4 border-t border-border-subtle">
           <Button
             variant="outline"
             size="sm"

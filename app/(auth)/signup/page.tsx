@@ -67,13 +67,13 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-canvas flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <Link href="/" className="text-2xl font-bold text-purple-600">
+          <Link href="/" className="text-2xl font-bold text-primary">
             ripple ✨
           </Link>
-          <p className="text-gray-500 mt-2 text-sm">Create your account in seconds</p>
+          <p className="text-ink-muted mt-2 text-sm">Create your account in seconds</p>
         </div>
 
         <Card>
@@ -83,7 +83,7 @@ export default function SignUpPage() {
           <CardContent>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-ink mb-1">
                   Email
                 </label>
                 <Input
@@ -98,7 +98,7 @@ export default function SignUpPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-ink mb-1">
                   Password
                 </label>
                 <Input
@@ -113,7 +113,7 @@ export default function SignUpPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-ink mb-1">
                   Confirm password
                 </label>
                 <Input
@@ -132,13 +132,13 @@ export default function SignUpPage() {
               </Button>
             </form>
 
-            <p className="text-center text-sm text-gray-400 mt-4">
+            <p className="text-center text-sm text-ink-muted mt-4">
               A unique username will be generated for you.
             </p>
 
-            <p className="text-center text-sm text-gray-500 mt-2">
+            <p className="text-center text-sm text-ink-muted mt-2">
               Already have an account?{' '}
-              <Link href="/signin" className="text-purple-600 hover:underline font-medium">
+              <Link href="/signin" className="text-primary hover:underline font-medium">
                 Sign in
               </Link>
             </p>

@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { CategorySelector, type Category } from './CategorySelector';
+import { ClueSelector, type ClueType } from './ClueSelector';
 import { useToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 
@@ -78,7 +79,7 @@ export function SendForm({ recipientUsername, onSuccess }: SendFormProps) {
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
       {/* Category */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-ink mb-2">
           What type of compliment?
         </label>
         <CategorySelector
@@ -89,7 +90,7 @@ export function SendForm({ recipientUsername, onSuccess }: SendFormProps) {
 
       {/* Message */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-ink mb-2">
           Your message
         </label>
         <Textarea
@@ -103,10 +104,10 @@ export function SendForm({ recipientUsername, onSuccess }: SendFormProps) {
           <p className="text-xs text-red-500 mt-1">{form.formState.errors.message.message}</p>
         )}
         <div className="flex items-center justify-between mt-2">
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-ink-muted">
             Be specific. What did they do that stood out?
           </p>
-          <p className={cn('text-xs', messageLength > 260 ? 'text-red-500 font-medium' : 'text-gray-400')}>
+          <p className={cn('text-xs', messageLength > 260 ? 'text-red-500 font-medium' : 'text-ink-muted')}>
             {messageLength}/280
           </p>
         </div>
@@ -114,18 +115,13 @@ export function SendForm({ recipientUsername, onSuccess }: SendFormProps) {
 
       {/* Clue */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Give them a clue? (Optional)
+        <label className="block text-sm font-medium text-ink mb-2">
+          Give them a clue? <span className="text-ink-muted font-normal">(optional)</span>
         </label>
-        <select
-          {...form.register('clueType')}
-          className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-        >
-          <option value="generic">Keep it mysterious 🤫</option>
-          <option value="linkedin">LinkedIn connection 💼</option>
-          <option value="company">Colleague 🏢</option>
-          <option value="recent">Someone they met recently ✨</option>
-        </select>
+        <ClueSelector
+          value={form.watch('clueType') as ClueType}
+          onChange={(clue) => form.setValue('clueType', clue)}
+        />
       </div>
 
       {/* Public toggle */}
@@ -134,9 +130,9 @@ export function SendForm({ recipientUsername, onSuccess }: SendFormProps) {
           type="checkbox"
           id="isPublic"
           {...form.register('isPublic')}
-          className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+          className="rounded border-border-subtle accent-primary"
         />
-        <label htmlFor="isPublic" className="text-sm text-gray-600">
+        <label htmlFor="isPublic" className="text-sm text-ink-muted">
           Share anonymously on the trending wall
         </label>
       </div>

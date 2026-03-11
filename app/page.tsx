@@ -25,22 +25,22 @@ export default async function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50">
+    <div className="min-h-screen bg-canvas">
       <Navbar user={currentUser} />
 
       <main className="max-w-4xl mx-auto px-4 pt-20 pb-32 text-center">
-        <div className="inline-flex items-center gap-2 bg-purple-100 text-purple-700 text-sm font-medium px-4 py-1.5 rounded-full mb-8">
+        <div className="inline-flex items-center gap-2 bg-surface-alt text-primary text-sm font-medium px-4 py-1.5 rounded-full mb-8 border border-border-subtle">
           ✨ Anonymous compliments platform
         </div>
 
-        <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+        <h1 className="text-5xl sm:text-6xl font-bold text-ink mb-6 leading-tight">
           Spread kindness,{' '}
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-teal">
             anonymously
           </span>
         </h1>
 
-        <p className="text-xl text-gray-500 mb-10 max-w-2xl mx-auto leading-relaxed">
+        <p className="text-xl text-ink-muted mb-10 max-w-2xl mx-auto leading-relaxed">
           Send heartfelt compliments to the people who inspire you. No need to reveal yourself —
           let your words create a ripple of positivity.
         </p>
@@ -95,10 +95,10 @@ export default async function HomePage() {
               desc: "Every compliment is reviewed by AI to ensure it's kind, positive, and safe.",
             },
           ].map((f) => (
-            <div key={f.title} className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm">
+            <div key={f.title} className="bg-surface rounded-xl p-6 border border-border-subtle shadow-sm">
               <div className="text-3xl mb-3">{f.icon}</div>
-              <h3 className="font-semibold text-gray-900 mb-2">{f.title}</h3>
-              <p className="text-sm text-gray-500 leading-relaxed">{f.desc}</p>
+              <h3 className="font-semibold text-ink mb-2">{f.title}</h3>
+              <p className="text-sm text-ink-muted leading-relaxed">{f.desc}</p>
             </div>
           ))}
         </div>

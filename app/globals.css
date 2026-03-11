@@ -1,26 +1,76 @@
 @import "tailwindcss";
 
+/* Enable class-based dark mode */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ─── Raw palette ──────────────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --eggshell-50: #f9f7ec;
+  --eggshell-100: #f2efd9;
+  --eggshell-200: #e6dfb3;
+  --burnt-peach-400: #de7254;
+  --burnt-peach-500: #d64e29;
+  --burnt-peach-600: #ab3f21;
+  --twilight-600: #52567a;
+  --twilight-700: #3d405b;
+  --twilight-800: #292b3d;
+  --twilight-900: #14151f;
+  --teal-300: #a0c5b3;
+  --teal-400: #81b29a;
+  --teal-500: #619e81;
+  --apricot-300: #efc176;
+  --apricot-400: #eaac48;
+
+  /* ─── Semantic tokens (light mode) ─── */
+  --canvas: var(--eggshell-50);
+  --surface: #ffffff;
+  --surface-alt: var(--eggshell-100);
+  --border-subtle: var(--eggshell-200);
+  --ink: var(--twilight-800);
+  --ink-muted: var(--twilight-600);
 }
 
+/* ─── Dark mode overrides ──────────────────────────────────── */
+.dark {
+  --canvas: #0e0f15;
+  --surface: #14151f;
+  --surface-alt: #1f2133;
+  --border-subtle: var(--twilight-700);
+  --ink: var(--eggshell-50);
+  --ink-muted: #a3a6c2;
+}
+
+/* ─── Tailwind theme tokens ────────────────────────────────── */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  /* Semantic (auto-switch via CSS vars above) */
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+  --color-border-subtle: var(--border-subtle);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+
+  /* Fixed palette colours */
+  --color-primary: var(--burnt-peach-500);
+  --color-primary-dark: var(--burnt-peach-600);
+  --color-primary-light: var(--burnt-peach-400);
+  --color-dark: var(--twilight-700);
+  --color-teal: var(--teal-400);
+  --color-teal-light: var(--teal-300);
+  --color-warm: var(--apricot-400);
+  --color-warm-light: var(--apricot-300);
+
+  /* Named shades for direct Navbar use */
+  --color-eggshell-50: var(--eggshell-50);
+  --color-eggshell-100: var(--eggshell-100);
+  --color-eggshell-200: var(--eggshell-200);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--canvas);
+  color: var(--ink);
   font-family: Arial, Helvetica, sans-serif;
 }

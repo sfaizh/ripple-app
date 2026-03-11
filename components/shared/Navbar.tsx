@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTheme } from 'next-themes';
+import { Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 
@@ -15,6 +17,7 @@ interface NavbarProps {
 export function Navbar({ user }: NavbarProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const { resolvedTheme, setTheme } = useTheme();
 
   const handleSignOut = async () => {
     await fetch('/api/auth/signout', { method: 'POST' });
@@ -24,13 +27,16 @@ export function Navbar({ user }: NavbarProps) {
   };
 
   return (
-    <header className="border-b border-gray-100 bg-white/80 backdrop-blur sticky top-0 z-40">
+    <header className="border-b border-border-subtle bg-surface-alt dark:bg-dark dark:border-dark/30 sticky top-0 z-40">
       <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
-        <Link href="/" className="font-bold text-purple-600 text-lg tracking-tight">
+        <Link
+          href="/"
+          className="font-bold text-lg tracking-tight text-primary dark:text-warm"
+        >
           ripple ✨
         </Link>
 
-        <nav className="flex items-center gap-2">
+        <nav className="flex items-center gap-1">
           {user ? (
             <>
               <Link href="/inbox">
@@ -55,6 +61,19 @@ export function Navbar({ user }: NavbarProps) {
               </Link>
             </>
           )}
+
+          {/* Theme toggle */}
+          <button
+            onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+            className="ml-1 h-8 w-8 flex items-center justify-center rounded-md text-ink-muted hover:text-ink hover:bg-surface transition-colors"
+            aria-label="Toggle theme"
+          >
+            {resolvedTheme === 'dark' ? (
+              <Sun className="h-4 w-4" />
+            ) : (
+              <Moon className="h-4 w-4" />
+            )}
+          </button>
         </nav>
       </div>
     </header>

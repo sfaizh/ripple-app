@@ -3,6 +3,7 @@ import { Geist } from 'next/font/google';
 import './globals.css';
 import { ToastProvider } from '@/components/ui/toast';
 import { SoketiProvider } from '@/components/shared/SoketiProvider';
+import { ThemeProvider } from '@/components/shared/ThemeProvider';
 import { createClient } from '@/lib/supabase/server';
 import { db } from '@/lib/db/client';
 import { users } from '@/lib/db/schema';
@@ -23,7 +24,6 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Get current user for Soketi subscription
   let userId: string | null = null;
   try {
     const supabase = await createClient();
@@ -40,13 +40,15 @@ export default async function RootLayout({
   }
 
   return (
-    <html lang="en">
-      <body className={`${geist.variable} font-sans antialiased bg-gray-50 text-gray-900`}>
-        <ToastProvider>
-          <SoketiProvider userId={userId}>
-            {children}
-          </SoketiProvider>
-        </ToastProvider>
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${geist.variable} font-sans antialiased bg-canvas text-ink`}>
+        <ThemeProvider>
+          <ToastProvider>
+            <SoketiProvider userId={userId}>
+              {children}
+            </SoketiProvider>
+          </ToastProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

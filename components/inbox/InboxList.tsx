@@ -45,8 +45,8 @@ export function InboxList() {
       {compliments.length === 0 ? (
         <div className="text-center py-16">
           <p className="text-4xl mb-4">💌</p>
-          <p className="text-gray-500 font-medium mb-2">No compliments yet</p>
-          <p className="text-sm text-gray-400">
+          <p className="text-ink-muted font-medium mb-2">No compliments yet</p>
+          <p className="text-sm text-ink-muted">
             Share your wall link to start receiving kind words!
           </p>
         </div>

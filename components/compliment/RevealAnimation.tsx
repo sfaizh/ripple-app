@@ -38,16 +38,16 @@ export function RevealAnimation({
       {/* Overlay shown before reveal */}
       {!isRevealed && (
         <motion.div
-          className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg z-10"
+          className="absolute inset-0 flex items-center justify-center bg-surface-alt rounded-lg z-10 border border-border-subtle"
           initial={{ opacity: 1 }}
           animate={{ opacity: isAnimating ? 0 : 1 }}
           transition={{ duration: 0.3 }}
         >
           <div className="text-center pointer-events-none">
-            <p className="text-sm font-medium text-purple-600 mb-1">
+            <p className="text-sm font-medium text-primary mb-1">
               Click to reveal
             </p>
-            <p className="text-xs text-purple-400">✨ Your secret awaits ✨</p>
+            <p className="text-xs text-ink-muted">✨ Your secret awaits ✨</p>
           </div>
         </motion.div>
       )}
