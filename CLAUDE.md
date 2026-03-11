@@ -12,7 +12,7 @@ This file provides guidance to Claude Code when working with the Ripple codebase
 ## Tech Stack (Free-Tier Optimized)
 
 ### Frontend
-- **Framework**: Next.js 15 (App Router) + TypeScript strict
+- **Framework**: Next.js 16 (App Router) + TypeScript strict
 - **Styling**: Tailwind CSS + shadcn/ui
 - **Animations**: framer-motion
 
@@ -43,11 +43,13 @@ This file provides guidance to Claude Code when working with the Ripple codebase
 ## Core Features
 
 - Send anonymous compliments by category (professional, creative, personal growth, just because)
+- No account required to send — `senderId` stored as `null` for anonymous senders
 - Groq AI moderation filters toxic content before delivery
 - Real-time notifications via Soketi when compliments arrive
 - Blur-to-reveal animation for compliment viewing (framer-motion)
-- Public trending wall (opt-in), user wall pages at `/wall/[username]`
+- Public compliments feed on wall pages (`/wall/[username]`) — shows approved opt-in compliments
 - Clue system: "Someone who follows you on LinkedIn said..."
+- PKCE email confirmation flow via `/api/auth/confirm`
 
 ## Project Structure
 
@@ -56,9 +58,9 @@ docs/                        # Architecture documentation
 app/
 ├── (auth)/signin|signup     # Auth pages
 ├── inbox/                   # Protected inbox page
-├── wall/[username]/         # Public wall page
+├── wall/[username]/         # Public wall page with compliment feed
 └── api/
-    ├── auth/                # signup, signin, signout, session
+    ├── auth/                # signup, signin, signout, session, confirm (PKCE)
     ├── compliments/         # send, inbox, [id], [id]/read, trending
     ├── workers/             # moderation, notifications, daily-streak
     ├── soketi/auth/         # Private channel auth
@@ -73,9 +75,9 @@ lib/
 ├── soketi/server.ts         # Server-side Pusher client
 └── utils.ts                 # cn() utility
 components/
-├── compliment/              # ComplimentCard, RevealAnimation, SendForm, CategorySelector
+├── compliment/              # ComplimentCard, RevealAnimation, SendForm, CategorySelector, ClueSelector
 ├── inbox/                   # InboxList, InboxFilter
-├── shared/                  # Navbar, SoketiProvider, CopyButton
+├── shared/                  # Navbar, SoketiProvider, CopyButton, ThemeProvider
 └── wall/                    # WallSendForm
 ```
 
@@ -98,12 +100,13 @@ pnpm dev
 
 ## Deployment
 
-Deployed to Vercel. Supabase project at `lcycnjtlwegbsbqxzrbg.supabase.co`. Soketi on Railway.
+Deployed to Vercel (`https://ripple-black.vercel.app`). Supabase at `lcycnjtlwegbsbqxzrbg.supabase.co`. Soketi on Railway.
 
 Remaining steps (see `docs/DEPLOYMENT.md`):
 - Step 3: Enable pgmq/pg_cron in Supabase SQL editor
-- Step 5: Add `GROQ_API_KEY` to Vercel env vars
-- Generate `WORKER_SECRET` (`openssl rand -base64 32`) and add to Vercel
+- Supabase dashboard → Authentication → URL Configuration:
+  - Site URL: `https://ripple-black.vercel.app`
+  - Redirect URLs: `https://ripple-black.vercel.app/**` and `http://localhost:3000/**`
 
 ## Environment Variables
 
@@ -112,6 +115,7 @@ Key non-obvious variables (see `docs/ENVIRONMENT.md` for full list):
 - `SUPABASE_SERVICE_ROLE_KEY` — Server-only, never expose to client
 - `DATABASE_URL` — Pooled connection (for Drizzle queries)
 - `DIRECT_URL` — Direct connection (for drizzle-kit migrations)
+- `NEXT_PUBLIC_APP_URL` — Canonical URL (`http://localhost:3000` dev, `https://ripple-black.vercel.app` prod)
 - `GROQ_API_KEY` — Groq moderation
 - `SOKETI_*` — App ID, key, secret, host
 - `WORKER_SECRET` — Shared secret for cron worker routes
@@ -122,7 +126,8 @@ Key non-obvious variables (see `docs/ENVIRONMENT.md` for full list):
 - Never expose `SUPABASE_SERVICE_ROLE_KEY` to client
 - Use RLS policies for all database access
 - Validate all inputs with Zod
-- Rate limit: 10 compliments/user/day
+- Rate limit: 10 compliments/day for authenticated senders; anonymous senders are unlimited
+- `senderId` is nullable — anonymous sends store `null`, never reject unauthenticated compliment POSTs
 
 ### Code Style
 - TypeScript strict mode

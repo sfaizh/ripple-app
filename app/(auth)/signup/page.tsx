@@ -48,13 +48,10 @@ export default function SignUpPage() {
       }
 
       toast({
-        title: 'Account created! ✨',
-        description: `Your username is @${json.user.username}`,
-        duration: 6000,
+        title: 'Check your email ✉️',
+        description: `We sent a confirmation link to ${data.email}. Click it to activate your account.`,
+        duration: 10000,
       });
-
-      router.push('/inbox');
-      router.refresh();
     } catch (error: unknown) {
       toast({
         title: 'Sign up failed',

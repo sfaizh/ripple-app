@@ -34,12 +34,15 @@ export async function POST(request: Request) {
     const { email, password } = parsed.data;
     const supabase = await createClient();
 
+    // Derive origin from request so it works without NEXT_PUBLIC_APP_URL being set
+    const origin = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
+
     // Sign up with Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/confirm`,
+        emailRedirectTo: `${origin}/api/auth/confirm`,
       },
     });
 
