@@ -24,12 +24,11 @@ Committed to Git as a template for developers.
 ```bash
 # Database (Supabase)
 NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+SUPABASE_SECRET_API_KEY=
 
-# Inngest
-INNGEST_EVENT_KEY=
-INNGEST_SIGNING_KEY=
+# Worker Authentication
+WORKER_SECRET=
 
 # Soketi (Real-time)
 NEXT_PUBLIC_SOKETI_KEY=
@@ -38,8 +37,8 @@ NEXT_PUBLIC_SOKETI_PORT=6001
 SOKETI_APP_ID=
 SOKETI_SECRET=
 
-# Gemini AI
-GEMINI_API_KEY=
+# Groq AI
+GROQ_API_KEY=
 
 # Resend Email (Optional)
 RESEND_API_KEY=
@@ -66,50 +65,45 @@ NODE_ENV=development
 1. [app.supabase.com](https://app.supabase.com) > Your project
 2. Settings > API > Project URL
 
-#### `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- **Description**: Supabase anonymous/public API key
+#### `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- **Description**: Supabase publishable API key (client-safe)
 - **Used by**: Supabase client (browser + server)
 - **Required**: ✅ Yes
 - **Public**: ✅ Yes (safe to expose - respects RLS policies)
 
 **Where to get**:
-1. Supabase dashboard > Settings > API > anon/public key
+1. Supabase dashboard > Settings > API > Publishable key
 
-**Note**: This key is safe to use in the browser because it respects Row Level Security (RLS) policies.
+**Note**: This key is safe to use in the browser because it respects Row Level Security (RLS) policies. Use this instead of the deprecated `anon_key` which relies on JWT secret rotation.
 
-#### `SUPABASE_SERVICE_ROLE_KEY`
-- **Description**: Supabase service role key (bypasses RLS)
+#### `SUPABASE_SECRET_API_KEY`
+- **Description**: Supabase secret API key (server-only, bypasses RLS)
 - **Used by**: Server-side operations that need to bypass RLS
 - **Required**: ✅ Yes (for admin operations)
 - **Public**: ❌ No (keep secret! Has full database access)
 
 **Where to get**:
-1. Supabase dashboard > Settings > API > service_role key
+1. Supabase dashboard > Settings > API > Secret key
 
-**Security Warning**: Never expose this key to the browser! Only use in API routes and server components.
+**Security Warning**: Never expose this key to the browser! Only use in API routes and server components. Using publishable/secret keys is safer than service_role keys because they're not based on the JWT secret and won't cause issues during JWT secret rotation.
 
 ---
 
-### Event System (Inngest)
+### Worker Authentication
 
-#### `INNGEST_EVENT_KEY`
-- **Description**: API key for sending events to Inngest
-- **Example**: `inngest_evt_1234567890abcdef`
-- **Used by**: Inngest client (`inngest.send()`)
+#### `WORKER_SECRET`
+- **Description**: Secret used to authenticate Vercel Cron calls to worker routes
+- **Example**: `a1b2c3d4e5f6...` (random 32-char string)
+- **Used by**: `/api/workers/*` routes — validates `Authorization: Bearer <secret>` header
 - **Required**: ✅ Yes
 - **Public**: ❌ No
 
-#### `INNGEST_SIGNING_KEY`
-- **Description**: Key for verifying webhook signatures from Inngest
-- **Example**: `inngest_sign_1234567890abcdef`
-- **Used by**: `/api/inngest` webhook endpoint
-- **Required**: ✅ Yes
-- **Public**: ❌ No
+**How to generate**:
+```bash
+openssl rand -base64 32
+```
 
-**Where to get**:
-1. [inngest.com](https://www.inngest.com) > "Settings" > "Keys"
-2. Event Key: For sending events
-3. Signing Key: For webhook verification
+**Note**: This prevents public access to worker endpoints. Vercel Cron sends this header automatically when configured in `vercel.json`.
 
 ---
 
@@ -166,23 +160,19 @@ SOKETI_DEFAULT_APP_SECRET=secret-key-123456
 
 ---
 
-### AI (Gemini)
+### AI (Groq)
 
-#### `GEMINI_API_KEY`
-- **Description**: Google Gemini API key for AI moderation
-- **Used by**: `lib/ai/gemini.ts` and moderation functions
+#### `GROQ_API_KEY`
+- **Description**: Groq API key for AI moderation (uses llama-3.1-8b-instant)
+- **Used by**: `lib/ai/moderation.ts`
 - **Required**: ✅ Yes
 - **Public**: ❌ No (keep secret!)
 
 **Where to get**:
-1. [console.cloud.google.com](https://console.cloud.google.com)
-2. Enable "Generative Language API"
-3. "APIs & Services" > "Credentials" > "Create Credentials" > "API Key"
+1. [console.groq.com](https://console.groq.com)
+2. "API Keys" > "Create API Key"
 
-**Security Best Practices**:
-- Restrict API key to Generative Language API only
-- Set application restrictions (HTTP referrers or IP addresses)
-- Rotate key every 90 days
+**Free tier**: Generous rate limits, no credit card required.
 
 ---
 
@@ -235,19 +225,18 @@ SOKETI_DEFAULT_APP_SECRET=secret-key-123456
 ### Server-side Only
 These variables are **only** accessible in server components, API routes, and server actions:
 
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `INNGEST_EVENT_KEY`
-- `INNGEST_SIGNING_KEY`
+- `SUPABASE_SECRET_API_KEY`
+- `WORKER_SECRET`
 - `SOKETI_APP_ID`
 - `SOKETI_SECRET`
-- `GEMINI_API_KEY`
+- `GROQ_API_KEY`
 - `RESEND_API_KEY`
 
 ### Client-side Accessible
 These variables are **exposed to the browser** (must have `NEXT_PUBLIC_` prefix):
 
 - `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 - `NEXT_PUBLIC_SOKETI_KEY`
 - `NEXT_PUBLIC_SOKETI_HOST`
 - `NEXT_PUBLIC_SOKETI_PORT`
@@ -263,11 +252,10 @@ These variables are **exposed to the browser** (must have `NEXT_PUBLIC_` prefix)
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_publishable_key
+SUPABASE_SECRET_API_KEY=your_secret_api_key
 
-INNGEST_EVENT_KEY=your_dev_event_key
-INNGEST_SIGNING_KEY=your_dev_signing_key
+WORKER_SECRET=your_random_worker_secret
 
 NEXT_PUBLIC_SOKETI_KEY=app-key-dev
 NEXT_PUBLIC_SOKETI_HOST=localhost
@@ -275,7 +263,7 @@ NEXT_PUBLIC_SOKETI_PORT=6001
 SOKETI_APP_ID=app-id-dev
 SOKETI_SECRET=secret-dev
 
-GEMINI_API_KEY=your_gemini_key
+GROQ_API_KEY=your_groq_key
 RESEND_API_KEY=your_resend_test_key
 
 NEXT_PUBLIC_APP_URL=http://localhost:3000
@@ -286,11 +274,10 @@ NODE_ENV=development
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_publishable_key
+SUPABASE_SECRET_API_KEY=your_secret_api_key
 
-INNGEST_EVENT_KEY=your_prod_event_key
-INNGEST_SIGNING_KEY=your_prod_signing_key
+WORKER_SECRET=your_random_worker_secret
 
 NEXT_PUBLIC_SOKETI_KEY=app-key-prod
 NEXT_PUBLIC_SOKETI_HOST=your-soketi.fly.dev
@@ -298,7 +285,7 @@ NEXT_PUBLIC_SOKETI_PORT=6001
 SOKETI_APP_ID=app-id-prod
 SOKETI_SECRET=secret-prod
 
-GEMINI_API_KEY=your_gemini_key
+GROQ_API_KEY=your_groq_key
 RESEND_API_KEY=your_resend_prod_key
 
 NEXT_PUBLIC_APP_URL=https://ripple.com
@@ -314,9 +301,9 @@ When adding variables in Vercel dashboard, set scopes:
 | Variable | Production | Preview | Development |
 |----------|------------|---------|-------------|
 | Supabase | ✅ | ✅ | ❌ (use local) |
-| Inngest | ✅ | ✅ | ❌ |
+| Worker Secret | ✅ | ✅ | ❌ |
 | Soketi | ✅ | ✅ | ❌ |
-| Gemini | ✅ | ✅ | ❌ |
+| Groq | ✅ | ✅ | ❌ |
 | Resend | ✅ | ⚠️ (use test key) | ❌ |
 | App URLs | ✅ | ✅ (auto-set) | ❌ |
 
@@ -344,9 +331,9 @@ When adding variables in Vercel dashboard, set scopes:
 - Development: Test/sandbox API keys
 
 ### 4. Restrict API Keys
-**Gemini API**:
-- Restrict to Generative Language API only
-- Set HTTP referrer restrictions
+**Groq API**:
+- Create separate keys for prod/dev
+- Rotate keys regularly
 
 **Resend API**:
 - Create separate keys for prod/dev
@@ -354,13 +341,14 @@ When adding variables in Vercel dashboard, set scopes:
 
 **Supabase**:
 - Enable Row Level Security (RLS) policies
-- Never use service role key in client code
-- Use anon key for all client operations
+- Never use secret API key in client code
+- Use publishable key for all client operations
+- Use publishable/secret keys instead of deprecated anon/service_role keys (safer during JWT secret rotation)
 
 ### 5. Monitor Usage
 - Check Vercel logs for leaked secrets
 - Set up alerts for API quota exceeded
-- Monitor Inngest for failed auth attempts
+- Monitor worker queue depth for stalled jobs
 
 ---
 
@@ -376,12 +364,11 @@ import { z } from 'zod';
 const envSchema = z.object({
   // Supabase
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().startsWith('sb_pb_'),
+  SUPABASE_SECRET_API_KEY: z.string().startsWith('sb_secret_'),
 
-  // Inngest
-  INNGEST_EVENT_KEY: z.string().startsWith('inngest_evt_'),
-  INNGEST_SIGNING_KEY: z.string().startsWith('inngest_sign_'),
+  // Worker
+  WORKER_SECRET: z.string().min(16),
 
   // Soketi
   NEXT_PUBLIC_SOKETI_KEY: z.string(),
@@ -390,8 +377,8 @@ const envSchema = z.object({
   SOKETI_APP_ID: z.string(),
   SOKETI_SECRET: z.string(),
 
-  // Gemini
-  GEMINI_API_KEY: z.string().startsWith('AIza'),
+  // Groq
+  GROQ_API_KEY: z.string(),
 
   // Resend (optional)
   RESEND_API_KEY: z.string().startsWith('re_').optional(),
@@ -406,7 +393,7 @@ export const env = envSchema.parse(process.env);
 
 // Usage:
 // import { env } from '@/lib/env';
-// const apiKey = env.GEMINI_API_KEY;
+// const apiKey = env.GROQ_API_KEY;
 ```
 
 ### Type Safety
@@ -418,12 +405,11 @@ declare namespace NodeJS {
   interface ProcessEnv {
     // Supabase
     NEXT_PUBLIC_SUPABASE_URL: string;
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: string;
-    SUPABASE_SERVICE_ROLE_KEY: string;
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: string;
+    SUPABASE_SECRET_API_KEY: string;
 
-    // Inngest
-    INNGEST_EVENT_KEY: string;
-    INNGEST_SIGNING_KEY: string;
+    // Worker
+    WORKER_SECRET: string;
 
     // Soketi
     NEXT_PUBLIC_SOKETI_KEY: string;
@@ -432,8 +418,8 @@ declare namespace NodeJS {
     SOKETI_APP_ID: string;
     SOKETI_SECRET: string;
 
-    // Gemini
-    GEMINI_API_KEY: string;
+    // Groq
+    GROQ_API_KEY: string;
 
     // Resend
     RESEND_API_KEY?: string;
@@ -481,11 +467,11 @@ NEXT_PUBLIC_SOKETI_KEY=abc123
 **Solution**:
 1. Check Supabase dashboard > Settings > API
 2. Copy URL and keys exactly
-3. Verify `NEXT_PUBLIC_SUPABASE_ANON_KEY` is the anon/public key
+3. Verify `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` is the publishable key (starts with `sb_pb_`)
 4. Test connection:
    ```bash
    curl https://your-project.supabase.co/rest/v1/ \
-     -H "apikey: your_anon_key"
+     -H "apikey: your_publishable_key"
    ```
 
 ### Issue: Soketi connection failed
@@ -498,18 +484,6 @@ NEXT_PUBLIC_SOKETI_KEY=abc123
 3. Verify port is `6001` (default)
 4. Check browser console for WebSocket errors
 
-### Issue: Inngest functions not registered
-
-**Cause**: `INNGEST_SIGNING_KEY` incorrect
-
-**Solution**:
-1. Go to Inngest dashboard > "Settings" > "Keys"
-2. Copy **Signing Key** (not Event Key!)
-3. Update Vercel environment variable
-4. Redeploy
-
----
-
 ## Quick Reference
 
 ### Minimum Required Variables (MVP)
@@ -517,12 +491,11 @@ NEXT_PUBLIC_SOKETI_KEY=abc123
 ```bash
 # Supabase (3 vars)
 NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+SUPABASE_SECRET_API_KEY=
 
-# Inngest (2 vars)
-INNGEST_EVENT_KEY=
-INNGEST_SIGNING_KEY=
+# Worker Auth (1 var)
+WORKER_SECRET=
 
 # Soketi (5 vars)
 NEXT_PUBLIC_SOKETI_KEY=
@@ -531,8 +504,8 @@ NEXT_PUBLIC_SOKETI_PORT=6001
 SOKETI_APP_ID=
 SOKETI_SECRET=
 
-# Gemini (1 var)
-GEMINI_API_KEY=
+# Groq (1 var)
+GROQ_API_KEY=
 
 # App (1 var)
 NEXT_PUBLIC_APP_URL=
@@ -541,17 +514,7 @@ NEXT_PUBLIC_APP_URL=
 RESEND_API_KEY=
 ```
 
-**Total: 13 required variables** (14 including auto-set `NODE_ENV`, 15 with optional Resend)
-
----
-
-## Comparison: Old vs New Stack
-
-| Service | Old | New | Why Change |
-|---------|-----|-----|------------|
-| Database | Vercel Postgres | Supabase | More generous free tier, built-in auth |
-| Real-time | Pusher | Soketi | Free self-hosted, no usage limits |
-| Auth | BetterAuth | Supabase Auth | Integrated with database, RLS policies |
+**Total: 12 required variables** (13 including auto-set `NODE_ENV`, 14 with optional Resend)
 
 **Cost Savings**: $89/month → $0/month (see COSTS.md)
 

@@ -20,13 +20,13 @@ Ripple is a Next.js application using an event-driven architecture for async pro
 │  │  API Routes                         │    │
 │  │  - /api/auth/[...all]              │    │
 │  │  - /api/compliments/*              │    │
-│  │  - /api/inngest (webhook)          │    │
+│  │  - /api/workers/* (cron workers)   │    │
 │  └───────────┬────────────────────────┘    │
 │              │                              │
 │  ┌───────────▼────────────────────────┐    │
-│  │  Inngest Client                     │    │
-│  │  - Emit events                      │    │
-│  │  - compliment.sent                  │    │
+│  │  Queue Client (pgmq)               │    │
+│  │  - enqueue('moderation', ...)      │    │
+│  │  - enqueue('notifications', ...)   │    │
 │  └───────────┬────────────────────────┘    │
 └──────────────┼──────────────────────────────┘
                │
@@ -34,20 +34,19 @@ Ripple is a Next.js application using an event-driven architecture for async pro
     │                      │              │
     ▼                      ▼              ▼
 ┌─────────┐       ┌──────────────┐   ┌─────────┐
-│Supabase │       │   Inngest    │   │ Soketi  │
-│Postgres │       │   (Cloud)    │   │(fly.io) │
+│Supabase │       │  pgmq queues │   │ Soketi  │
+│Postgres │       │  (in-DB)     │   │(fly.io) │
 │         │       │              │   │         │
-│ Users   │       │ Functions:   │   │ Notify  │
-│Complmts │       │ - moderate   │   │ Users   │
-│ Stats   │       │ - send-email │   │         │
-└─────────┘       │ - streaks    │   └─────────┘
-                  └───┬──────────┘
-                      │
+│ Users   │       │ Queues:      │   │ Notify  │
+│Complmts │       │ - moderation │   │ Users   │
+│ Stats   │       │ - notifs     │   │         │
+│ pgmq    │       └───┬──────────┘   └─────────┘
+└─────────┘           │
               ┌───────┴────────┬─────────┐
               ▼                ▼         ▼
          ┌────────┐      ┌─────────┐  ┌────────┐
-         │ Gemini │      │ Resend  │  │Supabase│
-         │   AI   │      │  Email  │  │ Update │
+         │  Groq  │      │ Resend  │  │Vercel  │
+         │   AI   │      │  Email  │  │ Cron   │
          └────────┘      └─────────┘  └────────┘
 ```
 
@@ -68,22 +67,22 @@ Ripple is a Next.js application using an event-driven architecture for async pro
 - **Database**: Supabase (PostgreSQL)
 - **ORM**: Drizzle ORM
 - **Authentication**: Supabase Auth
-- **Event System**: Inngest
+- **Queue**: Supabase pgmq + Vercel Cron
 - **Real-time**: Soketi (self-hosted on fly.io)
-- **AI**: Gemini API (Google Generative AI)
+- **AI**: Groq API (llama-3.1-8b-instant)
 - **Email**: Resend (optional)
 
 ---
 
 ## Event-Driven Architecture
 
-### Why Event-Driven?
+### Why Queue-Based?
 
-1. **Decouples heavy processing** from API routes (AI moderation, emails)
-2. **Built-in retries** and error handling via Inngest
+1. **Decouples heavy processing** from API routes (AI moderation, notifications)
+2. **Built-in retries** — failed jobs stay in queue and are retried on next cron tick
 3. **Scalable** - async processing doesn't block user requests
-4. **Observability** - function logs, execution history in Inngest dashboard
-5. **Easy testing** - Inngest step.run() enables unit testing
+4. **No extra service** — pgmq runs inside existing Supabase DB, zero additional cost
+5. **Observable** — queue depth and archived jobs queryable via SQL
 
 ---
 
@@ -95,20 +94,21 @@ Ripple is a Next.js application using an event-driven architecture for async pro
 User → Send Form → POST /api/compliments/send
                          │
                          ├─ Create compliment (status: pending)
-                         ├─ Emit Inngest event: "compliment.sent"
+                         ├─ enqueue('moderation', { complimentId })
                          └─ Return success to user ✅
 
-Inngest picks up event:
+Vercel Cron (every 1 min) → POST /api/workers/moderation
 
-"compliment.sent" → moderate-compliment function
+moderation worker:
                          │
-                         ├─ Step 1: Fetch compliment from DB
-                         ├─ Step 2: Call Gemini API for moderation
-                         ├─ Step 3: Update status (approved/rejected)
-                         └─ If approved → Emit "compliment.approved"
+                         ├─ Fetch compliment from DB
+                         ├─ Call Groq API for moderation
+                         ├─ Update status (approved/rejected)
+                         └─ If approved → enqueue('notifications', ...)
 
-"compliment.approved" → send-notification-email function (optional)
-                    └─ send-soketi-notification function
+Vercel Cron (every 1 min) → POST /api/workers/notifications
+
+notifications worker:
                          │
                          ├─ Check user email preferences
                          ├─ Send email via Resend (if enabled)
@@ -143,11 +143,9 @@ User clicks to reveal
 ### Flow 3: Real-Time Notifications
 
 ```
-Inngest: compliment.approved event
+Notifications worker dequeues job (type: "realtime")
                          │
-                         └─ send-soketi-notification function
-                              │
-                              └─ soketiServer.trigger(
+                         └─ soketiServer.trigger(
                                    channel: "private-user-{recipientId}",
                                    event: "new-compliment",
                                    data: { message: "You have a secret compliment waiting" }
@@ -163,19 +161,14 @@ Frontend: app/layout.tsx
 ### Flow 4: Streak Tracking (Scheduled)
 
 ```
-Inngest scheduled function (cron: "0 0 * * *")
+Vercel Cron (midnight UTC) → POST /api/workers/daily-streak
                          │
-                         └─ daily-streak-check function
+                         └─ daily-streak worker
                               │
-                              ├─ Step 1: Query users who sent compliment in last 24h
-                              ├─ Step 2: Update currentStreak += 1 for active users
-                              ├─ Step 3: Find users with streak >= 7
-                              └─ Step 4: Emit "streak.milestone" events
-
-"streak.milestone" → send-streak-reward function
-                         │
-                         ├─ Unlock custom theme for user
-                         └─ Send congratulations email
+                              ├─ Query users who sent compliment in last 24h
+                              ├─ Update currentStreak += 1 for active users
+                              ├─ Reset streak to 0 for inactive users
+                              └─ Send reward email to users who hit 7-day milestone
 ```
 
 ---
@@ -222,7 +215,7 @@ Inngest scheduled function (cron: "0 0 * * *")
 - Implement via Vercel Edge Config or Upstash Redis
 
 ### 4. AI Moderation
-- Gemini API filters: abuse, sexual, toxic, dangerous, hate
+- Groq API filters: abuse, sexual, toxic, dangerous, hate
 - All compliments moderated before delivery
 - Manual review queue for edge cases (Phase 2)
 
@@ -236,8 +229,8 @@ Inngest scheduled function (cron: "0 0 * * *")
 ## Scalability Strategy
 
 ### Day 1 (MVP)
-- Supabase free tier: 500 MB storage, unlimited compute hours
-- Inngest free tier: 1M step runs/month
+- Supabase free tier: 500 MB storage, unlimited compute hours, pgmq included
+- Vercel Cron: worker invocations negligible against compute limits
 - Soketi on fly.io: 3 shared CPU VMs (free tier)
 - Expected load: 100-1000 users
 
@@ -263,7 +256,7 @@ Inngest scheduled function (cron: "0 0 * * *")
 - Custom logging with Axiom or Logtail
 
 ### Infrastructure Monitoring
-- Inngest dashboard: function execution, retries, failures
+- Supabase SQL: queue depth (`select count(*) from pgmq.q_moderation`), archived jobs
 - Soketi dashboard: connection stats, event delivery (via metrics endpoint)
 - Supabase dashboard: slow query log, database stats
 
@@ -292,18 +285,18 @@ Inngest scheduled function (cron: "0 0 * * *")
         ┌───────────┼───────────┬──────────┐
         │           │           │          │
         ▼           ▼           ▼          ▼
-┌──────────┐  ┌──────────┐  ┌────────┐  ┌─────────┐
-│Supabase  │  │ Inngest  │  │ Soketi │  │fly.io   │
-│(Postgres)│  │  Cloud   │  │(fly.io)│  │ (host)  │
-│          │  │          │  │        │  │         │
-└──────────┘  └──────────┘  └────────┘  └─────────┘
+┌──────────┐  ┌──────────┐  ┌────────┐
+│Supabase  │  │  Soketi  │  │fly.io  │
+│(Postgres │  │ (fly.io) │  │ (host) │
+│ + pgmq)  │  │          │  │        │
+└──────────┘  └──────────┘  └────────┘
 ```
 
 ### CI/CD Pipeline
 1. Push to GitHub `main` branch
 2. Vercel auto-deploys to production
 3. Database migrations run via `supabase db push` or `pnpm drizzle-kit push`
-4. Inngest functions deployed via webhook
+4. Worker routes deployed automatically with Vercel (no separate step)
 5. Soketi running on fly.io (no deployment needed)
 6. Smoke tests run post-deployment
 
@@ -319,11 +312,11 @@ Inngest scheduled function (cron: "0 0 * * *")
 ### Rollback Plan
 1. Revert Git commit via Vercel dashboard
 2. Rollback database migration if needed
-3. Re-deploy Inngest functions to previous version
+3. Worker routes roll back automatically with Vercel deployment revert
 4. Monitor error logs and metrics
 
 ### Incident Response
-1. Monitor Vercel, Inngest, Supabase, Soketi dashboards
+1. Monitor Vercel, Supabase, Soketi dashboards
 2. Set up alerts for critical failures (Sentry)
 3. On-call rotation for post-launch (PagerDuty)
 4. Incident post-mortem template
@@ -364,15 +357,7 @@ Vercel Edge Network
 
 ## Key Architectural Trade-offs
 
-### 1. Inngest vs. Custom Queue (e.g., BullMQ)
-**Chosen**: Inngest
-- ✅ Fully managed, no infrastructure
-- ✅ Built-in retries, observability
-- ✅ Great DX, TypeScript support
-- ❌ Vendor lock-in
-- ❌ Cold start latency (~1-2s)
-
-### 2. Soketi vs. Pusher
+### 1. Soketi vs. Pusher
 **Chosen**: Soketi (self-hosted)
 - ✅ Free (self-hosted on fly.io)
 - ✅ Pusher-compatible API (drop-in replacement)
@@ -380,7 +365,7 @@ Vercel Edge Network
 - ❌ Requires managing deployment
 - ❌ Need to monitor uptime
 
-### 3. Supabase vs. Vercel Postgres
+### 2. Supabase vs. Vercel Postgres
 **Chosen**: Supabase
 - ✅ More generous free tier (500 MB + unlimited compute)
 - ✅ Built-in auth, realtime, storage
@@ -388,23 +373,6 @@ Vercel Edge Network
 - ✅ Active community and ecosystem
 - ❌ External service (not native Vercel integration)
 - ❌ Requires separate deployment configuration
-
-### 4. Drizzle vs. Prisma
-**Chosen**: Drizzle
-- ✅ Smaller bundle size, edge-compatible
-- ✅ SQL-like syntax (easier migration from raw SQL)
-- ✅ Better TypeScript inference
-- ❌ Smaller community than Prisma
-- ❌ Fewer integrations
-
-### 5. Supabase Auth vs. NextAuth
-**Chosen**: Supabase Auth
-- ✅ Built into Supabase (no additional service)
-- ✅ Row-level security integration
-- ✅ Multiple auth providers (email, OAuth, magic links)
-- ✅ Great TypeScript support
-- ❌ Tied to Supabase ecosystem
-- ❌ Less flexible than standalone auth libraries
 
 ---
 
@@ -416,9 +384,3 @@ Ripple's architecture is designed for:
 3. **Scalability** - horizontal scaling via edge functions
 4. **Developer experience** - TypeScript, great tooling
 5. **Cost efficiency** - generous free tiers for MVP
-
-As the platform grows, the architecture can evolve with:
-- Caching layers (Redis)
-- Read replicas (multi-region)
-- Microservices (if needed)
-- Custom infrastructure (post-PMF)

@@ -102,7 +102,7 @@ export const compliments = pgTable('compliments', {
 
   // Moderation
   moderationStatus: moderationStatusEnum('moderation_status').notNull().default('pending'),
-  moderationResult: json('moderation_result'), // Stores Gemini API response
+  moderationResult: json('moderation_result'), // Stores Groq API response
 
   // Read tracking
   isRead: boolean('is_read').notNull().default(false),

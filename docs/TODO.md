@@ -46,16 +46,16 @@
 ### Email Notifications (Resend) - *Skip this for the current project*
 - [ ] Set up Resend API key
 - [ ] Email template: "You have a new compliment"
-- [ ] Inngest function: send-notification-email
+- [ ] Queue worker: notifications worker (enqueue after moderation approval)
 - [ ] Trigger: after compliment approved by moderation
 - [ ] Email content: teaser + link to reveal
 - [ ] User preference: email notification on/off
 
-### AI Moderation (Gemini)
-- [ ] Set up Gemini API client
+### AI Moderation (Groq)
+- [ ] Set up Groq API key in Vercel env vars
 - [ ] Create moderation prompt template (filter: abuse, sexual, toxic, dangerous, hate)
-- [ ] Inngest function: moderate-compliment
-- [ ] Moderation flow: queue on send → moderate → approve/reject
+- [ ] Queue worker: moderation worker (`/api/workers/moderation`)
+- [ ] Moderation flow: enqueue on send → worker moderates → approve/reject
 - [ ] Store moderation status in database (pending, approved, rejected)
 - [ ] Only show approved compliments to recipient
 
@@ -123,11 +123,11 @@
 - [ ] Integration tests for API routes
 - [ ] E2E tests for user flows
 - [ ] Load testing for database queries
-- [ ] Gemini API mock for testing
+- [ ] Groq API mock for testing
 
 ### Monitoring
 - [ ] Set up error tracking (Sentry)
-- [ ] Monitor Inngest function success rates
+- [ ] Monitor worker queue depth and job success rates
 - [ ] Track Soketi notification delivery
 - [ ] Monitor email delivery rates
 - [ ] Database query performance monitoring
@@ -160,6 +160,6 @@
 - Compliment quality: % of compliments marked as approved by AI
 - Technical health:
   - API error rate < 0.5%
-  - Inngest function success rate > 99%
+  - Worker queue success rate > 99%
   - Real-time notification delivery rate > 98%
   - Email delivery rate > 98%

@@ -145,8 +145,8 @@ Send a compliment to another user.
 
 **Side Effects:**
 1. Creates compliment with `moderationStatus: pending`
-2. Emits Inngest event: `compliment.sent` with `complimentId`
-3. AI moderation triggered asynchronously
+2. Enqueues job to `moderation` queue with `complimentId`
+3. AI moderation triggered asynchronously via worker
 
 **Errors:**
 - `400`: Invalid input (validation failed)
@@ -444,7 +444,7 @@ Generate AI-suggested response to a compliment.
 ```
 
 **Notes:**
-- Uses Gemini API to generate contextual response
+- Uses Groq API to generate contextual response
 - Future feature, not MVP
 
 **Errors:**
@@ -453,41 +453,80 @@ Generate AI-suggested response to a compliment.
 
 ---
 
-## Webhook Routes
+## Worker Routes
 
-### POST /api/inngest
+### POST /api/workers/moderation
 
-Inngest webhook endpoint for event processing.
+Processes pending AI moderation jobs from the `moderation` queue.
 
 **Headers:**
-- `x-inngest-signature`: Inngest signature for verification
-- `x-inngest-event-key`: Inngest event key
-
-**Request Body:**
-```json
-{
-  "event": "compliment.sent",
-  "data": {
-    "complimentId": "660e8400-e29b-41d4-a716-446655440001"
-  }
-}
-```
+- `Authorization: Bearer <WORKER_SECRET>`
 
 **Response (200):**
 ```json
 {
-  "status": "ok"
+  "processed": 5,
+  "succeeded": 5,
+  "failed": 0
 }
 ```
 
 **Notes:**
-- This endpoint is called by Inngest cloud service
-- Triggers registered Inngest functions (moderation, email, etc.)
-- Signature verification required for security
+- Called by Vercel Cron every minute
+- Dequeues up to 5 jobs per invocation from `pgmq.q_moderation`
+- On success, enqueues notification jobs to `notifications` queue
 
 **Errors:**
-- `401`: Invalid signature
-- `500`: Function execution failed
+- `401`: Missing or invalid `WORKER_SECRET`
+
+---
+
+### POST /api/workers/notifications
+
+Processes pending notification jobs (Soketi push + optional email).
+
+**Headers:**
+- `Authorization: Bearer <WORKER_SECRET>`
+
+**Response (200):**
+```json
+{
+  "processed": 3,
+  "succeeded": 3,
+  "failed": 0
+}
+```
+
+**Notes:**
+- Called by Vercel Cron every minute
+- Handles both `type: "realtime"` (Soketi) and `type: "email"` (Resend) jobs
+
+**Errors:**
+- `401`: Missing or invalid `WORKER_SECRET`
+
+---
+
+### POST /api/workers/daily-streak
+
+Runs the daily streak check: increments active streaks, resets inactive, sends milestone rewards.
+
+**Headers:**
+- `Authorization: Bearer <WORKER_SECRET>`
+
+**Response (200):**
+```json
+{
+  "activeUsers": 42,
+  "milestones": 3
+}
+```
+
+**Notes:**
+- Called by Vercel Cron daily at midnight UTC
+- Safe to re-run (idempotent within the same day)
+
+**Errors:**
+- `401`: Missing or invalid `WORKER_SECRET`
 
 ---
 
@@ -673,23 +712,22 @@ curl -X GET "https://ripple.vercel.app/api/compliments/inbox?limit=20" \
 
 ---
 
-## Webhook Testing
+## Worker Testing
 
-### Test Inngest Locally
+### Trigger Workers Locally
 
 ```bash
-# Start Inngest dev server
-npx inngest-cli dev
+# Trigger moderation worker
+curl -X POST http://localhost:3000/api/workers/moderation \
+  -H "Authorization: Bearer your-worker-secret"
 
-# Trigger test event
-curl -X POST http://localhost:3000/api/inngest \
-  -H "Content-Type: application/json" \
-  -d '{
-    "event": "compliment.sent",
-    "data": {
-      "complimentId": "test-id-123"
-    }
-  }'
+# Trigger notifications worker
+curl -X POST http://localhost:3000/api/workers/notifications \
+  -H "Authorization: Bearer your-worker-secret"
+
+# Seed a test moderation job first
+# (run in a script or Supabase SQL editor)
+# select pgmq.send('moderation', '{"complimentId":"test-id-123"}');
 ```
 
 ---

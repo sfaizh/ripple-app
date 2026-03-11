@@ -4,146 +4,119 @@ This file provides guidance to Claude Code when working with the Ripple codebase
 
 ## Project Overview
 
-**Ripple** is an anonymous compliment platform where users can send and receive kind messages. Think "secret admirer" meets positive workplace culture.
+**Ripple** is an anonymous compliment platform where users can send and receive kind messages.
 
-**Status**: Architecture phase - ready for implementation
+**Status**: MVP implemented and deployed
 **Goal**: Hobby project optimized for $0/month hosting (100-1000 users)
 
 ## Tech Stack (Free-Tier Optimized)
 
 ### Frontend
-- **Framework**: Next.js 15 (App Router) + TypeScript
+- **Framework**: Next.js 15 (App Router) + TypeScript strict
 - **Styling**: Tailwind CSS + shadcn/ui
 - **Animations**: framer-motion
 
 ### Backend
 - **Hosting**: Vercel (free tier)
-- **Database**: Supabase PostgreSQL (free tier: 500 MB, unlimited compute)
-- **Auth**: Supabase Auth (built-in, no separate service needed)
-- **Real-time**: Soketi on fly.io (self-hosted, Pusher-compatible)
-- **Events**: Inngest (async processing, free tier: 1M runs/month)
-- **AI**: Gemini API (moderation, free tier: 1,500 requests/day)
-- **Email**: Resend (optional, skip for free tier)
+- **Database**: Supabase PostgreSQL (free tier)
+- **Auth**: Supabase Auth via `@supabase/ssr`
+- **Real-time**: Soketi on Railway (self-hosted, Pusher-compatible)
+- **Events**: pgmq (Supabase native queues) — graceful fallback to auto-approve if not configured
+- **AI**: Groq SDK (`llama-3.1-8b-instant`) for content moderation
+- **Email**: Resend (optional, skipped for free tier)
 
 ### Tools
 - **Package Manager**: pnpm
 - **ORM**: Drizzle ORM
-- **Validation**: Zod
+- **Validation**: Zod + React Hook Form
+- **Data fetching**: SWR
 
 ## Key Architecture Decisions
 
-1. **Supabase over Vercel Postgres**: Unlimited compute hours, built-in auth, better free tier
-2. **Soketi over Pusher**: Self-hosted = $0/month vs $49/month, no connection limits
-3. **Skip email notifications**: Use real-time + in-app notifications to stay free
-4. **Event-driven with Inngest**: AI moderation runs async, doesn't block user requests
-5. **Anonymous by default**: Compliments can be sent without revealing sender identity
+1. **Supabase over Vercel Postgres**: Unlimited compute hours, built-in auth
+2. **Soketi over Pusher**: Self-hosted = $0/month, no connection limits
+3. **Groq over Gemini**: Free tier, fast inference, no billing setup
+4. **Skip email**: Use real-time + in-app notifications to stay free
+5. **pgmq queues with fallback**: Async moderation; auto-approves in dev if queue not set up
+6. **Anonymous by default**: Compliments can be sent without revealing sender identity
 
 ## Core Features
 
 - Send anonymous compliments by category (professional, creative, personal growth, just because)
-- AI moderation (Gemini) filters toxic content before delivery
-- Real-time notifications when compliments arrive
-- Blur-to-reveal animation for compliment viewing
-- Public trending wall (opt-in)
-- User wall pages: `/wall/[username]`
+- Groq AI moderation filters toxic content before delivery
+- Real-time notifications via Soketi when compliments arrive
+- Blur-to-reveal animation for compliment viewing (framer-motion)
+- Public trending wall (opt-in), user wall pages at `/wall/[username]`
 - Clue system: "Someone who follows you on LinkedIn said..."
-
-## Important Assumptions
-
-### Cost Optimization
-- Target: $0/month for up to 1000 users
-- Email notifications are **optional** (skip to stay free)
-- Daily backups only (no point-in-time recovery on free tier)
-- Soketi runs on fly.io free tier (3 shared CPU VMs)
-
-### Database
-- Compliments: ~1 KB each, expecting ~50 per user lifetime
-- Storage: 50 MB at 1000 users (well under 500 MB limit)
-- Unlimited queries (Supabase has no compute hour limit)
-
-### Privacy
-- Row Level Security (RLS) policies enforce data access
-- Sender identity optional (nullable `senderId`)
-- Public trending wall shows no user identifiers
-- Supabase anon key safe to expose (respects RLS)
-
-### Moderation
-- All compliments start as `pending`
-- AI moderates within ~2 seconds
-- Only `approved` compliments delivered to recipient
-- Rejected compliments logged for review
 
 ## Project Structure
 
 ```
-docs/               # Comprehensive architecture documentation
-├── ARCHITECTURE.md # System design, event flows, diagrams
-├── DATABASE-SCHEMA.md # Drizzle schema, queries, indexes
-├── API-ROUTES.md   # All endpoints with examples
-├── INNGEST-FUNCTIONS.md # Event workflows
-├── COMPONENT-STRUCTURE.md # UI components
-├── DEPLOYMENT.md   # Step-by-step deployment guide
-├── ENVIRONMENT.md  # Environment variables reference
-├── COSTS.md        # Cost analysis & optimization
-└── TODO.md         # Implementation checklist
-
-app/                # Next.js app (not yet created)
-lib/                # Utilities, DB, API clients (not yet created)
-components/         # React components (not yet created)
+docs/                        # Architecture documentation
+app/
+├── (auth)/signin|signup     # Auth pages
+├── inbox/                   # Protected inbox page
+├── wall/[username]/         # Public wall page
+└── api/
+    ├── auth/                # signup, signin, signout, session
+    ├── compliments/         # send, inbox, [id], [id]/read, trending
+    ├── workers/             # moderation, notifications, daily-streak
+    ├── soketi/auth/         # Private channel auth
+    ├── users/               # [username], me/stats, me/settings
+    └── health/
+lib/
+├── db/schema.ts             # Drizzle schema (users, compliments, enums)
+├── db/client.ts             # Drizzle + postgres client
+├── supabase/                # client.ts, server.ts, middleware.ts
+├── queue/client.ts          # pgmq enqueue/dequeue/ack/nack
+├── ai/moderation.ts         # Groq moderation (moderateWithGroq)
+├── soketi/server.ts         # Server-side Pusher client
+└── utils.ts                 # cn() utility
+components/
+├── compliment/              # ComplimentCard, RevealAnimation, SendForm, CategorySelector
+├── inbox/                   # InboxList, InboxFilter
+├── shared/                  # Navbar, SoketiProvider, CopyButton
+└── wall/                    # WallSendForm
 ```
 
 ## Development Workflow
 
-### Setup
 ```bash
-# Install dependencies
 pnpm install
-
-# Set up environment variables
-cp .env.example .env.local
-# Fill in: Supabase, Inngest, Soketi, Gemini keys
-
-# Run database migrations
-pnpm drizzle-kit push
-
-# Start dev server
+cp .env.example .env.local   # Fill in Supabase, Soketi, Groq keys
+pnpm db:push                 # Apply schema to Supabase
 pnpm dev
 ```
 
 ### Key Commands
-- `pnpm dev` - Start Next.js dev server
-- `pnpm build` - Build for production
-- `pnpm lint` - Run ESLint
-- `pnpm type-check` - Run TypeScript checks
-- `pnpm drizzle-kit generate` - Generate migrations
-- `pnpm drizzle-kit push` - Apply migrations to DB
+- `pnpm dev` — Start dev server
+- `pnpm build` — Production build
+- `pnpm type-check` — TypeScript check
+- `pnpm db:push` — Apply schema (uses DIRECT_URL from .env.local)
+- `pnpm db:generate` — Generate migrations
+- `pnpm db:studio` — Open Drizzle Studio
 
-## Deployment Checklist
+## Deployment
 
-See `docs/DEPLOYMENT.md` for full guide. Quick summary:
+Deployed to Vercel. Supabase project at `lcycnjtlwegbsbqxzrbg.supabase.co`. Soketi on Railway.
 
-1. **Supabase**: Create project, get URL + keys
-2. **Soketi**: Deploy to fly.io (5 min setup)
-3. **Inngest**: Create app, get event + signing keys
-4. **Vercel**: Connect GitHub repo, add env vars, deploy
-5. **Gemini**: Enable Generative Language API, get key
+Remaining steps (see `docs/DEPLOYMENT.md`):
+- Step 3: Enable pgmq/pg_cron in Supabase SQL editor
+- Step 5: Add `GROQ_API_KEY` to Vercel env vars
+- Generate `WORKER_SECRET` (`openssl rand -base64 32`) and add to Vercel
 
-Total setup time: ~30 minutes
+## Environment Variables
 
-## Documentation
-
-All architecture decisions documented in `/docs`:
-- Read `ARCHITECTURE.md` for system design
-- Read `COSTS.md` for free-tier strategy
-- Read `TODO.md` for implementation tasks
-- Read `DEPLOYMENT.md` before deploying
+Key non-obvious variables (see `docs/ENVIRONMENT.md` for full list):
+- `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase client
+- `SUPABASE_SERVICE_ROLE_KEY` — Server-only, never expose to client
+- `DATABASE_URL` — Pooled connection (for Drizzle queries)
+- `DIRECT_URL` — Direct connection (for drizzle-kit migrations)
+- `GROQ_API_KEY` — Groq moderation
+- `SOKETI_*` — App ID, key, secret, host
+- `WORKER_SECRET` — Shared secret for cron worker routes
 
 ## Constraints & Guidelines
-
-### Performance
-- Target Lighthouse score > 85
-- API response time < 300ms (p95)
-- Inngest functions < 3s execution
 
 ### Security
 - Never expose `SUPABASE_SERVICE_ROLE_KEY` to client
@@ -152,21 +125,22 @@ All architecture decisions documented in `/docs`:
 - Rate limit: 10 compliments/user/day
 
 ### Code Style
-- Use TypeScript strict mode
-- Prefer server components over client
+- TypeScript strict mode
+- Prefer server components over client components
 - Use Drizzle for all DB queries
 - Follow Next.js App Router conventions
 
-## Need Help?
+### Performance
+- Target Lighthouse score > 85
+- API response time < 300ms (p95)
 
-- **Architecture questions**: See `docs/ARCHITECTURE.md`
-- **Database schema**: See `docs/DATABASE-SCHEMA.md`
-- **API endpoints**: See `docs/API-ROUTES.md`
-- **Cost concerns**: See `docs/COSTS.md`
-- **Deployment issues**: See `docs/DEPLOYMENT.md`
+## Documentation
 
-## Current Phase
-
-**Phase**: Planning complete, ready for implementation
-**Next step**: Initialize Next.js project and install dependencies
-**Priority**: Day 1 MVP features (see `docs/TODO.md`)
+- `docs/ARCHITECTURE.md` — System design, event flows
+- `docs/DATABASE-SCHEMA.md` — Drizzle schema reference
+- `docs/API-ROUTES.md` — All endpoints with examples
+- `docs/QUEUE-FUNCTIONS.md` — Worker/queue event flows
+- `docs/DEPLOYMENT.md` — Step-by-step deployment guide
+- `docs/ENVIRONMENT.md` — Environment variables reference
+- `docs/COSTS.md` — Cost analysis
+- `docs/TODO.md` — Implementation checklist

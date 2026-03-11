@@ -39,161 +39,176 @@ In Vercel dashboard:
 
 ---
 
-## Step 2: Database Setup (Vercel Postgres)
+## Step 2: Database Setup (Supabase)
 
-### 2.1 Add Vercel Postgres
+### 2.1 Create a Supabase Project
 
-1. Go to your project in Vercel dashboard
-2. Click "Storage" tab
-3. Click "Create Database"
-4. Select "Postgres" (Neon)
-5. Choose region (same as your app deployment)
-6. Click "Create"
+- Go to the Supabase dashboard.
+- Click "New Project".
+- Select or create an Organization.
+- Enter a Project Name.
+- Set a Database Password (store this securely).
+- Choose a Region closest to your application deployment.
+- Click "Create Project" and wait for provisioning to complete.
 
-### 2.2 Get Connection Strings
+### 2.2 Get the Database Connection Strings
 
-Vercel will automatically add these environment variables:
-- `POSTGRES_URL`
-- `POSTGRES_PRISMA_URL`
-- `POSTGRES_URL_NON_POOLING`
-- `POSTGRES_USER`
-- `POSTGRES_HOST`
-- `POSTGRES_PASSWORD`
-- `POSTGRES_DATABASE`
+- Open your project in the Supabase dashboard.
+- Go to Settings → Database.
+- Scroll to Connection Pooling.
+- Copy the Pooled Connection String.
 
-**Note**: These are automatically injected into your app - no manual setup needed!
+Example: `postgresql://postgres:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres`
 
-### 2.3 Run Database Migrations
+#### Environment Variables
 
-```bash
-# Install Vercel CLI locally
-pnpm add -g vercel
+Add the following variables to your app:
 
-# Login
-vercel login
+```
+DATABASE_URL=postgresql://postgres:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres
 
-# Link to your project
-vercel link
-
-# Pull environment variables locally
-vercel env pull .env.local
-
-# Run migrations
-pnpm drizzle-kit push
+DIRECT_URL=postgresql://postgres:<password>@db.<project-ref>.supabase.co:5432/postgres
 ```
 
-**Alternative: Use Vercel Console**
+#### Explanation
 
-1. Go to "Storage" > Your Postgres database
-2. Click "Query" tab
-3. Paste SQL from `drizzle/migrations/*.sql`
-4. Click "Run Query"
+DATABASE_URL → uses the Supabase pooler (PgBouncer) and should be used by your application.
+
+DIRECT_URL → connects directly to Postgres and should be used for migrations.
+
+This setup prevents connection limits when running serverless apps on platforms like Vercel.
+
+### 2.3 Add Environment Variables to Vercel
+
+1. Open your project in the Vercel dashboard.
+2. Go to Settings → Environment Variables.
+3. Add the following
+
+```
+DATABASE_URL=<supabase pooled connection string>
+DIRECT_URL=<supabase direct connection string>
+```
+4. Redeploy your project.
+
+### 2.4 Run Database Migrations
+
+- Run migrations locally using your ORM: `pnpm drizzle-kit push`
+- Your migration tool will use:
+`DIRECT_URL for schema changes`
+`DATABASE_URL for application queries`
+
+**Alternative: Use Supabase SQL Editor**
+- Open your project in the Supabase dashboard.
+- Go to SQL Editor.
+- Open your migration file:
+`drizzle/migrations/*.sql`
+- Paste the SQL into the editor.
+- Click Run
 
 ---
 
-## Step 3: Inngest Setup
+## Step 3: Queue & Workers Setup
 
-### 3.1 Create Inngest Account
+### 3.1 Enable pgmq and pg_cron in Supabase
 
-1. Go to [inngest.com](https://www.inngest.com)
-2. Sign up (free tier)
-3. Create new app: "Ripple"
+1. Go to your Supabase project dashboard
+2. Open **SQL Editor**
+3. Run the following:
 
-### 3.2 Get API Keys
+```sql
+create extension if not exists pgmq;
+create extension if not exists pg_cron;
 
-1. In Inngest dashboard, go to "Settings" > "Keys"
-2. Copy:
-   - **Event Key** (for sending events)
-   - **Signing Key** (for webhook verification)
+select pgmq.create('moderation');
+select pgmq.create('notifications');
+```
 
-### 3.3 Configure Inngest Webhook
+### 3.2 Generate Worker Secret
 
-1. In Inngest dashboard, go to "Apps" > "Ripple"
-2. Click "Sync"
-3. Enter webhook URL: `https://your-app.vercel.app/api/inngest`
-4. Click "Save"
+```bash
+# Generate a random secret to protect worker routes
+openssl rand -base64 32
+```
 
-### 3.4 Add Environment Variables to Vercel
+### 3.3 Add Environment Variable to Vercel
 
 ```bash
 # In Vercel dashboard > Settings > Environment Variables
-INNGEST_EVENT_KEY=your_event_key_here
-INNGEST_SIGNING_KEY=your_signing_key_here
+WORKER_SECRET=your_generated_secret_here
 ```
 
-### 3.5 Deploy Inngest Functions
+### 3.4 Configure Vercel Cron
 
-```bash
-# After deploying to Vercel, Inngest will auto-discover functions
-# Check in Inngest dashboard > "Functions" to verify all are registered:
-# - moderate-compliment
-# - send-notification-email
-# - send-pusher-notification
-# - daily-streak-check
-# - send-streak-reward
-```
+Add `vercel.json` to your project root:
 
----
-
-## Step 4: Pusher Setup
-
-### 4.1 Create Pusher Account
-
-1. Go to [pusher.com](https://pusher.com)
-2. Sign up (free tier: 100 concurrent connections)
-3. Create new app: "Ripple"
-
-### 4.2 Get Credentials
-
-In Pusher dashboard > "App Keys":
-- **App ID**
-- **Key** (public)
-- **Secret** (private)
-- **Cluster** (e.g., `us2`)
-
-### 4.3 Configure CORS
-
-In Pusher dashboard > "App Settings":
-- Enable client events: **No**
-- Authorized domains: `https://your-app.vercel.app`
-
-### 4.4 Add Environment Variables to Vercel
-
-```bash
-NEXT_PUBLIC_PUSHER_KEY=your_public_key_here
-PUSHER_APP_ID=your_app_id_here
-PUSHER_SECRET=your_secret_here
-NEXT_PUBLIC_PUSHER_CLUSTER=us2
+```json
+{
+  "crons": [
+    { "path": "/api/workers/moderation",    "schedule": "* * * * *" },
+    { "path": "/api/workers/notifications", "schedule": "* * * * *" },
+    { "path": "/api/workers/daily-streak",  "schedule": "0 0 * * *" }
+  ]
+}
 ```
 
 ---
 
-## Step 5: Gemini API Setup
+## Step 4: Soketi Setup
 
-### 5.1 Create Google Cloud Project
+### 4.1 Deploy Soketi to Railway
 
-1. Go to [console.cloud.google.com](https://console.cloud.google.com)
-2. Create new project: "Ripple"
-3. Enable **Generative Language API** (Gemini)
+1. Go to [railway.app](https://railway.app)
+2. Create new project > "Deploy from repo"
+3. Fork or use the [Soketi GitHub repo](https://github.com/soketi/soketi)
+4. Connect your GitHub account and select the repo
+5. Deploy and Railway will auto-generate environment variables
+6. Once deployed, note the public URL from the Soketi dashboard (e.g., `soketi-xyz.up.railway.app`)
+
+### 4.2 Get Soketi Credentials
+
+Copy these values from your Soketi dashboard:
+- **SOKETI_DEFAULT_APP_ID**: Your app ID (default: `app-id`)
+- **SOKETI_DEFAULT_APP_KEY**: Your app key (public, used in browser)
+- **SOKETI_DEFAULT_APP_SECRET**: Your app secret (private, used on server)
+- **SOKETI_PUBLIC_HOST**: Your Soketi public hostname
+- **SOKETI_PUBLIC_PORT**: Your Soketi public port (usually `443`)
+
+### 4.3 Add Environment Variables to Vercel
+
+Map Soketi values to your app:
+
+```bash
+NEXT_PUBLIC_SOKETI_KEY=<SOKETI_DEFAULT_APP_KEY>
+NEXT_PUBLIC_SOKETI_HOST=<SOKETI_PUBLIC_HOST>
+NEXT_PUBLIC_SOKETI_PORT=<SOKETI_PUBLIC_PORT>
+NEXT_PUBLIC_SOKETI_ENCRYPTED=true
+SOKETI_SECRET=<SOKETI_DEFAULT_APP_SECRET>
+```
+
+---
+
+## Step 5: Groq API Setup
+
+### 5.1 Create Groq Account
+
+1. Go to [console.groq.com](https://console.groq.com)
+2. Sign up (free tier, no credit card required)
 
 ### 5.2 Create API Key
 
-1. Go to "APIs & Services" > "Credentials"
-2. Click "Create Credentials" > "API Key"
-3. Copy API key
-4. Restrict key:
-   - **Application restrictions**: None (or HTTP referrers for `*.vercel.app`)
-   - **API restrictions**: Generative Language API only
+1. Go to "API Keys" in the Groq console
+2. Click "Create API Key"
+3. Name it "Ripple" and copy the key
 
 ### 5.3 Add Environment Variable to Vercel
 
 ```bash
-GEMINI_API_KEY=your_api_key_here
+GROQ_API_KEY=your_api_key_here
 ```
 
 ---
 
-## Step 6: Resend Email Setup
+## Step 6: Resend Email Setup - *Skip this for current state*
 
 ### 6.1 Create Resend Account
 
@@ -242,52 +257,32 @@ RESEND_API_KEY=your_api_key_here
 
 ---
 
-## Step 7: BetterAuth Setup
-
-### 7.1 Generate Secret Key
-
-```bash
-# Generate random 32-character secret
-openssl rand -base64 32
-```
-
-### 7.2 Add Environment Variables to Vercel
-
-```bash
-BETTER_AUTH_SECRET=your_generated_secret_here
-BETTER_AUTH_URL=https://your-app.vercel.app
-```
-
-**Important**: Update `BETTER_AUTH_URL` with your actual Vercel URL
-
----
-
-## Step 8: Final Environment Variables
+## Step 7: Final Environment Variables
 
 ### Complete `.env.local` (for local development)
 
 ```bash
-# Database (Vercel Postgres)
-POSTGRES_URL=
-POSTGRES_PRISMA_URL=
-POSTGRES_URL_NON_POOLING=
+# Database (Supabase)
+DATABASE_URL=
+DIRECT_URL=
 
-# Auth (BetterAuth)
-BETTER_AUTH_SECRET=
-BETTER_AUTH_URL=http://localhost:3000
+# Auth (Supabase)
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
 
-# Inngest
-INNGEST_EVENT_KEY=
-INNGEST_SIGNING_KEY=
+# Worker Auth
+WORKER_SECRET=
 
-# Pusher
-NEXT_PUBLIC_PUSHER_KEY=
-PUSHER_APP_ID=
-PUSHER_SECRET=
-NEXT_PUBLIC_PUSHER_CLUSTER=us2
+# Soketi (Real-time)
+NEXT_PUBLIC_SOKETI_KEY=
+NEXT_PUBLIC_SOKETI_HOST=
+NEXT_PUBLIC_SOKETI_PORT=443
+NEXT_PUBLIC_SOKETI_ENCRYPTED=true
+SOKETI_SECRET=
 
-# Gemini AI
-GEMINI_API_KEY=
+# Groq AI
+GROQ_API_KEY=
 
 # Resend Email
 RESEND_API_KEY=
@@ -299,7 +294,7 @@ NODE_ENV=development
 
 ### Vercel Production Environment Variables
 
-In Vercel dashboard > Settings > Environment Variables, add **all** of the above (update `BETTER_AUTH_URL` and `NEXT_PUBLIC_APP_URL` to production URL).
+In Vercel dashboard > Settings > Environment Variables, add **all** of the above (update `NEXT_PUBLIC_APP_URL` to production URL).
 
 **Environment scopes**:
 - **Production**: All variables
@@ -308,9 +303,9 @@ In Vercel dashboard > Settings > Environment Variables, add **all** of the above
 
 ---
 
-## Step 9: Deploy to Production
+## Step 8: Deploy to Production
 
-### 9.1 Redeploy
+### 8.1 Redeploy
 
 After adding all environment variables:
 
@@ -324,52 +319,52 @@ After adding all environment variables:
 vercel --prod
 ```
 
-### 9.2 Verify Deployment
+### 8.2 Verify Deployment
 
 1. **Homepage**: `https://your-app.vercel.app`
 2. **API Health Check**: `https://your-app.vercel.app/api/health` (create this endpoint)
-3. **Inngest Functions**: Check Inngest dashboard > "Functions" (should show 5 functions)
-4. **Database**: Check Vercel dashboard > "Storage" > Query tab
+3. **Worker routes**: `curl -X POST https://your-app.vercel.app/api/workers/moderation -H "Authorization: Bearer $WORKER_SECRET"` (should return `{"processed":0,...}`)
+4. **Database**: Check Supabase SQL editor — `select count(*) from pgmq.q_moderation;`
 
 ---
 
-## Step 10: Post-Deployment Verification
+## Step 9: Post-Deployment Verification
 
-### 10.1 Test User Flow
+### 9.1 Test User Flow
 
 1. **Sign up**: Create test account
 2. **Send compliment**: Use wall link
-3. **Check moderation**: Verify Inngest function ran (check dashboard)
+3. **Check moderation**: Verify moderation worker ran (check Vercel function logs)
 4. **Check email**: Verify Resend email received
 5. **Check real-time**: Verify Pusher notification appears
 6. **Reveal compliment**: Click to reveal
 7. **Check database**: Verify `isRead = true`
 
-### 10.2 Test Error Scenarios
+### 9.2 Test Error Scenarios
 
 1. **Send toxic compliment**: Should be rejected by AI moderation
 2. **Rate limiting**: Send 11 compliments in 1 day (should fail)
 3. **Invalid recipient**: Send to non-existent username (should fail)
 
-### 10.3 Monitor Logs
+### 9.3 Monitor Logs
 
 **Vercel Logs:**
 - Go to "Deployments" > Click on deployment > "Logs" tab
 - Filter by "Error" to see issues
 
-**Inngest Logs:**
-- Go to Inngest dashboard > "Runs"
-- Check success rate (should be > 99%)
+**Worker Logs:**
+- Go to Vercel dashboard > "Deployments" > "Functions" tab
+- Filter by `/api/workers/*` to see invocation logs
 
-**Pusher Logs:**
-- Go to Pusher dashboard > "Debug Console"
-- Verify events being triggered
+**Soketi Logs:**
+- Go to Railway dashboard > Select your Soketi project > "Logs" tab
+- Monitor WebSocket connections and events
 
 ---
 
-## Step 11: Performance Optimization
+## Step 10: Performance Optimization
 
-### 11.1 Enable Vercel Analytics
+### 10.1 Enable Vercel Analytics
 
 1. Go to Vercel dashboard > "Analytics" tab
 2. Click "Enable Analytics"
@@ -378,7 +373,7 @@ vercel --prod
    - Core Web Vitals
    - User traffic
 
-### 11.2 Lighthouse Score
+### 10.2 Lighthouse Score
 
 Run Lighthouse audit:
 ```bash
@@ -391,7 +386,7 @@ npx lighthouse https://your-app.vercel.app --view
 - Best Practices: > 90
 - SEO: > 90
 
-### 11.3 Database Indexes
+### 10.3 Database Indexes
 
 Verify indexes are created:
 ```sql
@@ -409,9 +404,9 @@ Expected indexes:
 
 ---
 
-## Step 12: Custom Domain (Optional)
+## Step 11: Custom Domain (Optional)
 
-### 12.1 Add Custom Domain
+### 11.1 Add Custom Domain
 
 1. Go to Vercel dashboard > "Settings" > "Domains"
 2. Click "Add"
@@ -431,10 +426,9 @@ Value: cname.vercel-dns.com
 5. Wait for DNS propagation (5-10 minutes)
 6. SSL certificate auto-generated by Vercel
 
-### 12.2 Update Environment Variables
+### 11.2 Update Environment Variables
 
 ```bash
-BETTER_AUTH_URL=https://ripple.com
 NEXT_PUBLIC_APP_URL=https://ripple.com
 ```
 
@@ -442,9 +436,9 @@ Redeploy after updating.
 
 ---
 
-## Step 13: Monitoring & Alerts
+## Step 12: Monitoring & Alerts
 
-### 13.1 Set Up Error Tracking (Sentry)
+### 12.1 Set Up Error Tracking (Sentry)
 
 ```bash
 pnpm add @sentry/nextjs
@@ -465,7 +459,7 @@ Add to Vercel env vars:
 NEXT_PUBLIC_SENTRY_DSN=your_sentry_dsn_here
 ```
 
-### 13.2 Set Up Uptime Monitoring
+### 12.2 Set Up Uptime Monitoring
 
 **Option 1: Vercel Monitoring**
 - Go to Vercel dashboard > "Monitoring"
@@ -478,9 +472,9 @@ NEXT_PUBLIC_SENTRY_DSN=your_sentry_dsn_here
 
 ---
 
-## Step 14: Backup Strategy
+## Step 13: Backup Strategy
 
-### 14.1 Database Backups
+### 13.1 Database Backups
 
 Vercel Postgres includes:
 - **Daily automated backups** (7-day retention)
@@ -492,16 +486,16 @@ Vercel Postgres includes:
 pg_dump $POSTGRES_URL > backup-$(date +%Y%m%d).sql
 ```
 
-### 14.2 Code Backups
+### 13.2 Code Backups
 
 - GitHub repository (already versioned)
 - Vercel keeps deployment history (unlimited)
 
 ---
 
-## Step 15: CI/CD Pipeline
+## Step 14: CI/CD Pipeline
 
-### 15.1 GitHub Actions (Optional)
+### 14.1 GitHub Actions (Optional)
 
 Create `.github/workflows/deploy.yml`:
 
@@ -539,18 +533,20 @@ jobs:
 - [ ] Vercel project created and connected to GitHub
 - [ ] Vercel Postgres database created
 - [ ] Database migrations run (`pnpm drizzle-kit push`)
-- [ ] Inngest account created and webhook configured
-- [ ] Pusher account created and CORS configured
-- [ ] Gemini API key created and restricted
+- [ ] pgmq and pg_cron extensions enabled in Supabase
+- [ ] Moderation and notifications queues created
+- [ ] WORKER_SECRET generated and added to Vercel
+- [ ] vercel.json cron jobs configured
+- [ ] Soketi deployed to Railway and credentials configured
+- [ ] Groq API key created and added to Vercel
 - [ ] Resend account created and domain verified
-- [ ] BetterAuth secret generated
 - [ ] All environment variables added to Vercel
 - [ ] Production deployment successful
 - [ ] Test user flow (signup → send → receive → reveal)
 - [ ] Test AI moderation (toxic content rejected)
 - [ ] Test email delivery (Resend)
-- [ ] Test real-time notifications (Pusher)
-- [ ] Inngest functions registered (5 total)
+- [ ] Test real-time notifications (Soketi)
+- [ ] Worker routes responding (test with curl + WORKER_SECRET)
 - [ ] Lighthouse score > 85 (performance)
 - [ ] Error tracking enabled (Sentry)
 - [ ] Uptime monitoring enabled
@@ -570,25 +566,25 @@ jobs:
 2. Verify `POSTGRES_URL` is set in environment variables
 3. Redeploy
 
-### Issue: Inngest Functions Not Registered
+### Issue: Worker Routes Return 401
 
-**Cause**: Inngest webhook not configured or signing key mismatch
-
-**Solution**:
-1. Check Inngest dashboard > "Apps" > "Ripple" > "Sync"
-2. Verify webhook URL is correct: `https://your-app.vercel.app/api/inngest`
-3. Verify `INNGEST_SIGNING_KEY` matches Inngest dashboard
-4. Check Vercel logs for `POST /api/inngest` errors
-
-### Issue: Pusher Notifications Not Received
-
-**Cause**: Pusher credentials incorrect or CORS not configured
+**Cause**: `WORKER_SECRET` not set or mismatch between Vercel env var and `vercel.json`
 
 **Solution**:
-1. Check Pusher dashboard > "App Keys" - verify credentials
-2. Check Pusher dashboard > "App Settings" > Authorized domains
-3. Open browser console, look for Pusher connection errors
-4. Verify `NEXT_PUBLIC_PUSHER_KEY` is set (with `NEXT_PUBLIC_` prefix!)
+1. Verify `WORKER_SECRET` is set in Vercel dashboard > "Settings" > "Environment Variables"
+2. Test locally: `curl -X POST http://localhost:3000/api/workers/moderation -H "Authorization: Bearer your-secret"`
+3. Check Vercel logs for `POST /api/workers/*` errors
+4. Redeploy after updating env var
+
+### Issue: Soketi Notifications Not Received
+
+**Cause**: Soketi credentials incorrect or URL not accessible
+
+**Solution**:
+1. Verify Soketi is running on Railway: check Railway dashboard status
+2. Test connection: `curl https://your-soketi-url.up.railway.app`
+3. Verify env vars are set: `NEXT_PUBLIC_SOKETI_HOST`, `NEXT_PUBLIC_SOKETI_KEY`
+4. Open browser console, look for Soketi WebSocket connection errors
 
 ### Issue: Emails Not Sent
 
@@ -597,7 +593,7 @@ jobs:
 **Solution**:
 1. Check Resend dashboard > "API Keys" - verify key is active
 2. Check Resend dashboard > "Domains" - verify domain is verified
-3. Check Inngest logs for `send-notification-email` function errors
+3. Check Vercel logs for `/api/workers/notifications` errors
 4. Test email manually:
    ```bash
    curl https://api.resend.com/emails \
@@ -608,13 +604,12 @@ jobs:
 
 ### Issue: AI Moderation Failed
 
-**Cause**: Gemini API key invalid or quota exceeded
+**Cause**: Groq API key invalid or quota exceeded
 
 **Solution**:
-1. Check Google Cloud Console > "APIs & Services" > "Credentials"
-2. Verify Generative Language API is enabled
-3. Check API quota: "APIs & Services" > "Quotas"
-4. Check Inngest logs for `moderate-compliment` function errors
+1. Check [console.groq.com](https://console.groq.com) > "API Keys" — verify key is active
+2. Check Groq usage/quota in the dashboard
+3. Check Vercel logs for `/api/workers/moderation` errors
 
 ---
 
@@ -623,31 +618,21 @@ jobs:
 ### Free Tier Limits
 
 - **Vercel**: 100 GB bandwidth/month, 100 GB-hours compute
-- **Vercel Postgres**: 512 MB storage, 60 compute hours
-- **Inngest**: 1M step runs/month
-- **Pusher**: 100 concurrent connections, 200k messages/day
+- **Supabase Postgres**: 512 MB storage
+- **Vercel Cron**: 2 cron jobs on free tier (Hobby plan)
+- **Railway Soketi**: Shared CPU, limited to 2 concurrent connections (free tier)
 - **Resend**: 100 emails/day
-- **Gemini**: 15 requests/minute (free tier)
+- **Groq**: Generous free tier (varies by model)
 
 ### When to Upgrade
 
 **Vercel Pro** ($20/month):
-- 1 TB bandwidth
-- 1000 GB-hours compute
-- Upgrade when: > 10K monthly active users
+- Unlimited cron jobs
+- Upgrade when: you need more than 2 cron schedules
 
-**Vercel Postgres Pro**:
-- 256 GB storage
-- Unlimited compute hours
-- Upgrade when: > 50K compliments stored
-
-**Inngest Pro**:
-- 10M step runs/month
-- Upgrade when: > 100K events/month
-
-**Pusher Growth** ($49/month):
-- 500 concurrent connections
-- Upgrade when: > 100 concurrent users
+**Railway Standard** ($5/month):
+- More compute for Soketi
+- Upgrade when: > 2 concurrent WebSocket connections
 
 **Resend Pro** ($20/month):
 - 50K emails/month
@@ -667,7 +652,9 @@ Your Ripple app is now live in production! 🎉
 
 **Support Resources:**
 - Vercel Docs: https://vercel.com/docs
-- Inngest Docs: https://www.inngest.com/docs
-- Pusher Docs: https://pusher.com/docs
+- Vercel Cron Docs: https://vercel.com/docs/cron-jobs
+- Supabase pgmq Docs: https://supabase.com/docs/guides/database/extensions/pgmq
+- Soketi Docs: https://docs.soketi.app
+- Railway Docs: https://docs.railway.app
 - Resend Docs: https://resend.com/docs
-- Gemini API Docs: https://ai.google.dev/docs
+- Groq Docs: https://console.groq.com/docs

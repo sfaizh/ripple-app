@@ -4,7 +4,7 @@
 
 This document analyzes costs for running Ripple as a hobby project with 100-1000 users using our **free-tier optimized stack**.
 
-**Architecture**: Vercel + Supabase + Soketi + Inngest + Gemini
+**Architecture**: Vercel + Supabase + Soketi + Groq
 
 ---
 
@@ -105,39 +105,38 @@ This document analyzes costs for running Ripple as a hobby project with 100-1000
 
 ---
 
-### 4. Inngest (Event System)
+### 4. Supabase Queues / pgmq (Async Processing)
 
 **Free Tier Limits:**
-- 1M step runs/month
-- 50 concurrent executions
-- 7-day log retention
+- Included in Supabase free tier (no separate service)
+- `pgmq` is a PostgreSQL extension, runs inside your existing DB
+- Vercel Cron: 2 cron jobs included on free tier (Hobby plan)
 
 **Usage Estimates:**
 
-| Users | Compliments/Month | Step Runs | Cost |
-|-------|-------------------|-----------|------|
-| 100   | ~500              | ~1,500    | **$0** |
-| 500   | ~2,500            | ~7,500    | **$0** |
-| 1000  | ~5,000            | ~15,000   | **$0** |
+| Users | Compliments/Month | Queue Jobs | Cost |
+|-------|-------------------|------------|------|
+| 100   | ~500              | ~1,500     | **$0** |
+| 500   | ~2,500            | ~7,500     | **$0** |
+| 1000  | ~5,000            | ~15,000    | **$0** |
 
 **Assumptions:**
-- Each compliment triggers 3 step runs:
-  1. AI moderation (1 step)
-  2. Soketi notification (1 step)
-  3. Email notification (1 step, optional)
-- 5 compliments sent per user per month
-- Daily streak check: 1 step run/day = 30/month
+- Each compliment enqueues 1 moderation job + 2 notification jobs
+- Workers run via Vercel Cron every minute (counts as serverless invocations)
+- Daily streak check: 1 cron invocation/day
 
-**Verdict**: ✅ **FREE** (well under 1M limit)
+**Note**: Vercel free tier includes 100 GB-hours compute — worker invocations
+are lightweight (<100ms each) and negligible against this limit.
+
+**Verdict**: ✅ **FREE** — pgmq runs inside your existing Supabase DB at no extra cost
 
 ---
 
-### 5. Gemini API (AI Moderation)
+### 5. Groq API (AI Moderation)
 
 **Free Tier Limits:**
-- 15 requests/minute
-- 1,500 requests/day
-- 60,000 requests/month
+- Generous daily token limits (varies by model)
+- llama-3.1-8b-instant: fast and very affordable
 
 **Usage Estimates:**
 
@@ -148,18 +147,12 @@ This document analyzes costs for running Ripple as a hobby project with 100-1000
 | 1000  | ~160            | ~160          | **$0** |
 
 **Assumptions:**
-- Each compliment = 1 Gemini API call
+- Each compliment = 1 Groq API call
 - Average user sends 1 compliment every 2 days
 
-**Bottleneck**: ⚠️ 1,500 requests/day limit (could hit with viral growth)
-
-**Upgrade Cost**: Pay-as-you-go pricing:
-- $0.000125 per 1K characters input
-- Estimated: **$5-10/month** for 5,000 requests/day
-
 **Verdict**:
-- ✅ **FREE** for up to 1000 users (under 1,500/day limit)
-- Scale cost: **~$5/month** if exceeding free tier
+- ✅ **FREE** for up to 1000 users on free tier
+- Scale cost: Very low pay-as-you-go pricing if limits exceeded
 
 ---
 
@@ -200,8 +193,8 @@ Use instead:
 | Vercel Hosting | $0 |
 | Supabase (Database + Auth) | $0 |
 | Soketi (Real-time on fly.io) | $0 |
-| Inngest (Events) | $0 |
-| Gemini API | $0 |
+| Supabase pgmq (Queue) | $0 (built into Supabase) |
+| Groq API | $0 |
 | Resend | $0 (skip emails) |
 | **TOTAL** | **$0/month** ✅ |
 
@@ -216,29 +209,14 @@ Use instead:
 | Vercel Hosting | $0 |
 | Supabase | $0 |
 | Soketi | $0 |
-| Inngest | $0 |
-| Gemini API | $0 |
+| Supabase pgmq | $0 |
+| Groq API | $0 |
 | Resend | **$20** (if >100 emails/day) |
 | **TOTAL** | **$20/month** ⚠️ |
 
 **Supports**: 500+ users with email notifications
 
 ---
-
-## What Changed From Original Plan?
-
-### Old Stack (Would Cost $89/month at 1000 users)
-
-| Service | Cost at 1000 users |
-|---------|-------------------|
-| Vercel Hosting | $0 |
-| Vercel Postgres | $20 (compute hours) |
-| BetterAuth | $0 |
-| Inngest | $0 |
-| Pusher | $49 (concurrent connections) |
-| Gemini API | $0 |
-| Resend | $20 (email volume) |
-| **TOTAL** | **$89/month** |
 
 ### New Stack (FREE at 1000 users)
 
@@ -247,8 +225,8 @@ Use instead:
 | Vercel Hosting | $0 |
 | Supabase | $0 (unlimited compute) |
 | Soketi | $0 (self-hosted) |
-| Inngest | $0 |
-| Gemini API | $0 |
+| Supabase pgmq | $0 |
+| Groq API | $0 |
 | Resend | $0 (skip emails) |
 | **TOTAL** | **$0/month** ✅ |
 
@@ -339,7 +317,7 @@ export const soketiServer = new Pusher({
 ## Scaling Plan
 
 ### Phase 1: MVP (0-500 users) - $0/month
-- Supabase free tier
+- Supabase free tier (includes pgmq queues)
 - Soketi on fly.io free tier
 - Skip email notifications
 - All core features working
@@ -362,7 +340,7 @@ export const soketiServer = new Pusher({
 - Supabase Pro: $25/month
 - Soketi: Still free or upgrade fly.io ($5-10/month for dedicated)
 - Optional: Resend Pro if adding emails ($20/month)
-- Optional: Gemini pay-as-go if >1500/day ($5-10/month)
+- Optional: Groq pay-as-you-go if free tier exceeded
 
 **Note**: At 10K users, you can afford to monetize ($3/month subscription × 100 paying users = $300/month revenue)
 
@@ -374,15 +352,15 @@ Set up alerts to avoid surprise bills:
 
 - [ ] Vercel: Set bandwidth alert at 80 GB (dashboard)
 - [ ] Supabase: Monitor storage (dashboard > Database > Usage)
-- [ ] Inngest: Set alert at 800K step runs/month (dashboard)
+- [ ] Supabase: Monitor pgmq queue depth (`select count(*) from pgmq.q_moderation`)
 - [ ] Soketi: Monitor fly.io egress (160 GB limit/month)
-- [ ] Gemini: Track daily API calls (create custom counter)
+- [ ] Groq: Monitor usage in Groq console dashboard
 - [ ] Resend: Count emails sent/day if using (stay under 90)
 
 **Tools:**
 - Vercel dashboard: Usage tab
-- Supabase dashboard: Usage tab
-- Inngest dashboard: Runs tab
+- Supabase dashboard: Usage tab + SQL editor for queue depth
+- Vercel dashboard: Functions tab for worker invocation counts
 - fly.io dashboard: Metrics tab
 
 ---

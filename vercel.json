@@ -1,0 +1,7 @@
+{
+  "crons": [
+    { "path": "/api/workers/moderation",    "schedule": "* * * * *" },
+    { "path": "/api/workers/notifications", "schedule": "* * * * *" },
+    { "path": "/api/workers/daily-streak",  "schedule": "0 0 * * *" }
+  ]
+}
