@@ -68,7 +68,6 @@ NODE_ENV=development
 
 #### `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - **Description**: Supabase anonymous/public API key
-- **Example**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
 - **Used by**: Supabase client (browser + server)
 - **Required**: ✅ Yes
 - **Public**: ✅ Yes (safe to expose - respects RLS policies)
@@ -80,7 +79,6 @@ NODE_ENV=development
 
 #### `SUPABASE_SERVICE_ROLE_KEY`
 - **Description**: Supabase service role key (bypasses RLS)
-- **Example**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
 - **Used by**: Server-side operations that need to bypass RLS
 - **Required**: ✅ Yes (for admin operations)
 - **Public**: ❌ No (keep secret! Has full database access)
@@ -172,7 +170,6 @@ SOKETI_DEFAULT_APP_SECRET=secret-key-123456
 
 #### `GEMINI_API_KEY`
 - **Description**: Google Gemini API key for AI moderation
-- **Example**: `AIzaSyD1234567890abcdefGHIJKLMNOPQRSTUV`
 - **Used by**: `lib/ai/gemini.ts` and moderation functions
 - **Required**: ✅ Yes
 - **Public**: ❌ No (keep secret!)
@@ -193,7 +190,6 @@ SOKETI_DEFAULT_APP_SECRET=secret-key-123456
 
 #### `RESEND_API_KEY`
 - **Description**: Resend API key for sending emails
-- **Example**: `re_1234567890abcdefGHIJKLMNOPQRSTUV`
 - **Used by**: `lib/email/resend.ts` and email functions
 - **Required**: ⚠️ Optional (only if using email notifications)
 - **Public**: ❌ No (keep secret!)
