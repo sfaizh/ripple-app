@@ -25,13 +25,7 @@ export async function POST(request: Request) {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Unauthorized', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
-    }
+    // user may be null — sending compliments is allowed anonymously
 
     const body = await request.json();
     const parsed = sendSchema.safeParse(body);
@@ -57,32 +51,34 @@ export async function POST(request: Request) {
       );
     }
 
-    // Rate limit: 10 compliments per day
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Rate limit: 10 compliments per day (authenticated senders only)
+    if (user) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
-    const [{ value: todayCount }] = await db
-      .select({ value: count() })
-      .from(compliments)
-      .where(
-        and(
-          eq(compliments.senderId, user.id),
-          gte(compliments.createdAt, today)
-        )
-      );
+      const [{ value: todayCount }] = await db
+        .select({ value: count() })
+        .from(compliments)
+        .where(
+          and(
+            eq(compliments.senderId, user.id),
+            gte(compliments.createdAt, today)
+          )
+        );
 
-    if (todayCount >= 10) {
-      return NextResponse.json(
-        { error: 'Rate limit exceeded. Max 10 compliments per day.', code: 'RATE_LIMIT_EXCEEDED', retryAfter: 86400 },
-        { status: 429 }
-      );
+      if (todayCount >= 10) {
+        return NextResponse.json(
+          { error: 'Rate limit exceeded. Max 10 compliments per day.', code: 'RATE_LIMIT_EXCEEDED', retryAfter: 86400 },
+          { status: 429 }
+        );
+      }
     }
 
     const clueText = CLUE_TEXTS[clueType];
 
-    // Create compliment
+    // Create compliment (senderId is null for anonymous senders)
     const [newCompliment] = await db.insert(compliments).values({
-      senderId: user.id,
+      senderId: user?.id ?? null,
       recipientId: recipient.id,
       category,
       message,
@@ -92,20 +88,25 @@ export async function POST(request: Request) {
       moderationStatus: 'pending',
     }).returning();
 
-    // Increment sender's totalSent
-    await db.update(users)
-      .set({ totalSent: sql`${users.totalSent} + 1`, updatedAt: new Date() })
-      .where(eq(users.id, user.id));
+    // Increment sender's totalSent (authenticated senders only)
+    if (user) {
+      await db.update(users)
+        .set({ totalSent: sql`${users.totalSent} + 1`, updatedAt: new Date() })
+        .where(eq(users.id, user.id));
+    }
 
     // Try to enqueue for moderation (graceful fallback if queue not set up)
     try {
       await enqueue('moderation', { complimentId: newCompliment.id });
     } catch (queueError) {
       console.error('Queue unavailable, auto-approving for dev:', queueError);
-      // In dev without queue: auto-approve
+      // In dev without queue: auto-approve and mirror what the moderation worker does
       await db.update(compliments)
         .set({ moderationStatus: 'approved', updatedAt: new Date() })
         .where(eq(compliments.id, newCompliment.id));
+      await db.update(users)
+        .set({ totalReceived: sql`${users.totalReceived} + 1`, updatedAt: new Date() })
+        .where(eq(users.id, recipient.id));
     }
 
     return NextResponse.json({

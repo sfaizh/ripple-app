@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-03-12
+
+### Added
+- PKCE email confirmation handler at `GET /api/auth/confirm` — exchanges Supabase confirmation code for a session and redirects to `/inbox` on success or `/signin?error=confirmation_failed` on failure
+- Public compliments feed on wall pages (`/wall/[username]`) — shows the user's approved, opt-in compliments below the send form; cards render fully revealed since senders opted into public display
+- `NEXT_PUBLIC_APP_URL` environment variable for canonical redirect URL configuration
+
+### Fixed
+- Sign-up confirmation email now redirects to the correct production URL instead of `localhost:3000` — `emailRedirectTo` now passed to `supabase.auth.signUp` using `NEXT_PUBLIC_APP_URL`
+- Anonymous compliment sending no longer returns 401 Unauthorized — authentication is now optional on `POST /api/compliments/send`; unauthenticated senders are stored with `senderId = null`
+- Auto-approve fallback (dev mode, no pgmq) was not incrementing `totalReceived` for the recipient — now mirrors the moderation worker and increments on approval
+- Inbox "Received" stat now queries a live count of approved compliments from the `compliments` table instead of relying on the stale denormalized `users.total_received` value
+
+### Changed
+- Rate limiting (10/day) and `totalSent` increment on compliment send are now scoped to authenticated senders only; anonymous senders bypass the rate limit
+
 ## [0.2.0] - 2026-03-11
 
 ### Changed

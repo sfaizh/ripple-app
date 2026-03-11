@@ -38,6 +38,9 @@ export async function POST(request: Request) {
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/confirm`,
+      },
     });
 
     if (authError) {
