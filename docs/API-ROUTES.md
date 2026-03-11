@@ -472,7 +472,7 @@ Processes pending AI moderation jobs from the `moderation` queue.
 ```
 
 **Notes:**
-- Called by Vercel Cron every minute
+- Called by cron-job.org every minute
 - Dequeues up to 5 jobs per invocation from `pgmq.q_moderation`
 - On success, enqueues notification jobs to `notifications` queue
 
@@ -498,7 +498,7 @@ Processes pending notification jobs (Soketi push + optional email).
 ```
 
 **Notes:**
-- Called by Vercel Cron every minute
+- Called by cron-job.org every minute
 - Handles both `type: "realtime"` (Soketi) and `type: "email"` (Resend) jobs
 
 **Errors:**

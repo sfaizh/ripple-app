@@ -67,7 +67,7 @@ Ripple is a Next.js application using an event-driven architecture for async pro
 - **Database**: Supabase (PostgreSQL)
 - **ORM**: Drizzle ORM
 - **Authentication**: Supabase Auth
-- **Queue**: Supabase pgmq + Vercel Cron
+- **Queue**: Supabase pgmq + cron-job.org (per-minute) + Vercel Cron (daily)
 - **Real-time**: Soketi (self-hosted on fly.io)
 - **AI**: Groq API (llama-3.1-8b-instant)
 - **Email**: Resend (optional)
@@ -97,7 +97,8 @@ User → Send Form → POST /api/compliments/send
                          ├─ enqueue('moderation', { complimentId })
                          └─ Return success to user ✅
 
-Vercel Cron (every 1 min) → POST /api/workers/moderation
+cron-job.org (every 1 min) → POST /api/workers/moderation
+(Authorization: Bearer <WORKER_SECRET>)
 
 moderation worker:
                          │
@@ -106,7 +107,8 @@ moderation worker:
                          ├─ Update status (approved/rejected)
                          └─ If approved → enqueue('notifications', ...)
 
-Vercel Cron (every 1 min) → POST /api/workers/notifications
+cron-job.org (every 1 min) → POST /api/workers/notifications
+(Authorization: Bearer <WORKER_SECRET>)
 
 notifications worker:
                          │
@@ -230,7 +232,9 @@ Vercel Cron (midnight UTC) → POST /api/workers/daily-streak
 
 ### Day 1 (MVP)
 - Supabase free tier: 500 MB storage, unlimited compute hours, pgmq included
-- Vercel Cron: worker invocations negligible against compute limits
+- Vercel Cron (daily): `daily-streak` on Vercel Hobby (1 cron per day)
+- cron-job.org: `moderation` and `notifications` workers (every minute, free tier)
+- Worker invocations negligible against Vercel compute limits
 - Soketi on fly.io: 3 shared CPU VMs (free tier)
 - Expected load: 100-1000 users
 

@@ -110,7 +110,7 @@ This document analyzes costs for running Ripple as a hobby project with 100-1000
 **Free Tier Limits:**
 - Included in Supabase free tier (no separate service)
 - `pgmq` is a PostgreSQL extension, runs inside your existing DB
-- Vercel Cron: 2 cron jobs included on free tier (Hobby plan)
+- cron-job.org: Free tier, 1-minute intervals for per-minute cron jobs
 
 **Usage Estimates:**
 
@@ -122,8 +122,8 @@ This document analyzes costs for running Ripple as a hobby project with 100-1000
 
 **Assumptions:**
 - Each compliment enqueues 1 moderation job + 2 notification jobs
-- Workers run via Vercel Cron every minute (counts as serverless invocations)
-- Daily streak check: 1 cron invocation/day
+- Workers run via cron-job.org every minute (counts as serverless invocations)
+- Daily streak check: Vercel Cron (1 daily invocation, included in Hobby plan)
 
 **Note**: Vercel free tier includes 100 GB-hours compute — worker invocations
 are lightweight (<100ms each) and negligible against this limit.

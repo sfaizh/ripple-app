@@ -58,6 +58,7 @@
 - [ ] Moderation flow: enqueue on send → worker moderates → approve/reject
 - [ ] Store moderation status in database (pending, approved, rejected)
 - [ ] Only show approved compliments to recipient
+- [ ] Configure cron-job.org to POST `/api/workers/moderation` every minute with `Authorization: Bearer <WORKER_SECRET>` header (Vercel Hobby throttles per-minute crons)
 
 ### Trending Wall
 - [ ] Public feed page: /trending

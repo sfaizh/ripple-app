@@ -139,17 +139,31 @@ WORKER_SECRET=your_generated_secret_here
 
 ### 3.4 Configure Vercel Cron
 
-Add `vercel.json` to your project root:
+`vercel.json` only includes the daily cron (Hobby plan allows 1 cron per day frequency):
 
 ```json
 {
   "crons": [
-    { "path": "/api/workers/moderation",    "schedule": "* * * * *" },
-    { "path": "/api/workers/notifications", "schedule": "* * * * *" },
-    { "path": "/api/workers/daily-streak",  "schedule": "0 0 * * *" }
+    { "path": "/api/workers/daily-streak", "schedule": "0 0 * * *" }
   ]
 }
 ```
+
+The `moderation` and `notifications` workers run every minute via cron-job.org instead (see Step 3.5).
+
+### 3.5 Configure cron-job.org (replaces Vercel crons for moderation/notifications)
+
+Vercel Hobby plan throttles per-minute crons. Use [cron-job.org](https://cron-job.org) (free, supports 1-minute intervals) to trigger these workers:
+
+1. Create a free account at [cron-job.org](https://cron-job.org)
+2. Create two cron jobs, both set to run **every minute**:
+   - URL: `https://<your-vercel-url>/api/workers/moderation` — Method: **POST**
+   - URL: `https://<your-vercel-url>/api/workers/notifications` — Method: **POST**
+3. For each job, add a request header:
+   - `Authorization: Bearer <WORKER_SECRET>`
+4. `daily-streak` remains on Vercel cron (midnight UTC) — no change needed.
+
+> **Note:** `WORKER_SECRET` must be set both in Vercel environment variables (for the daily-streak cron) and as the `Authorization` header value in each cron-job.org job.
 
 ---
 
@@ -536,7 +550,9 @@ jobs:
 - [ ] pgmq and pg_cron extensions enabled in Supabase
 - [ ] Moderation and notifications queues created
 - [ ] WORKER_SECRET generated and added to Vercel
-- [ ] vercel.json cron jobs configured
+- [ ] vercel.json cron configured (daily-streak only)
+- [ ] cron-job.org: moderation worker job created (POST every minute, Authorization header set)
+- [ ] cron-job.org: notifications worker job created (POST every minute, Authorization header set)
 - [ ] Soketi deployed to Railway and credentials configured
 - [ ] Groq API key created and added to Vercel
 - [ ] Resend account created and domain verified

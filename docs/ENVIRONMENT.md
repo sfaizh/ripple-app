@@ -92,7 +92,7 @@ NODE_ENV=development
 ### Worker Authentication
 
 #### `WORKER_SECRET`
-- **Description**: Secret used to authenticate Vercel Cron calls to worker routes
+- **Description**: Secret used to authenticate cron jobs to worker routes
 - **Example**: `a1b2c3d4e5f6...` (random 32-char string)
 - **Used by**: `/api/workers/*` routes — validates `Authorization: Bearer <secret>` header
 - **Required**: ✅ Yes
@@ -103,7 +103,11 @@ NODE_ENV=development
 openssl rand -base64 32
 ```
 
-**Note**: This prevents public access to worker endpoints. Vercel Cron sends this header automatically when configured in `vercel.json`.
+**Where used**:
+- Vercel Cron: Automatically adds `Authorization: Bearer <WORKER_SECRET>` header for `/api/workers/daily-streak`
+- cron-job.org: You manually add `Authorization: Bearer <WORKER_SECRET>` header for `/api/workers/moderation` and `/api/workers/notifications`
+
+**Note**: This prevents public access to worker endpoints.
 
 ---
 

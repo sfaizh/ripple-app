@@ -2,7 +2,7 @@
 
 ## Overview
 
-Async processing uses **Supabase's native PostgreSQL queue** (`pgmq` extension) instead of a third-party service. Workers are Next.js API routes triggered by Vercel Cron. Scheduled tasks use Supabase `pg_cron`.
+Async processing uses **Supabase's native PostgreSQL queue** (`pgmq` extension) instead of a third-party service. Per-minute workers are triggered by cron-job.org, daily tasks use Vercel Cron.
 
 All worker logic lives in `lib/workers/`.
 
@@ -81,7 +81,7 @@ await enqueue('moderation', { complimentId: newCompliment.id });
 
 **Purpose**: AI moderation of compliments using Groq API (llama-3.1-8b-instant), then trigger notifications
 
-**Trigger**: Vercel Cron every minute → `POST /api/workers/moderation`
+**Trigger**: cron-job.org every minute → `POST /api/workers/moderation` (with `Authorization: Bearer <WORKER_SECRET>` header)
 
 **File**: `app/api/workers/moderation/route.ts`
 
@@ -244,7 +244,7 @@ Compliment message:
 
 **Purpose**: Send real-time Soketi notifications (and optional email) after moderation approval
 
-**Trigger**: Vercel Cron every minute → `POST /api/workers/notifications`
+**Trigger**: cron-job.org every minute → `POST /api/workers/notifications` (with `Authorization: Bearer <WORKER_SECRET>` header)
 
 **File**: `app/api/workers/notifications/route.ts`
 
@@ -371,18 +371,18 @@ select cron.schedule(
 
 > **Note**: Set `app.base_url` and `app.worker_secret` via Supabase's `ALTER DATABASE ... SET` or use the Supabase dashboard under Database → Configuration.
 
-Alternatively, use Vercel Cron (simpler setup):
+Alternatively, use Vercel Cron for daily tasks (Hobby plan allows 1 daily frequency):
 
 ```json
 // vercel.json
 {
   "crons": [
-    { "path": "/api/workers/moderation",    "schedule": "* * * * *" },
-    { "path": "/api/workers/notifications", "schedule": "* * * * *" },
-    { "path": "/api/workers/daily-streak",  "schedule": "0 0 * * *" }
+    { "path": "/api/workers/daily-streak", "schedule": "0 0 * * *" }
   ]
 }
 ```
+
+> **Note**: The `moderation` and `notifications` workers are triggered by cron-job.org (every minute) instead, due to Vercel Hobby plan throttling per-minute crons.
 
 ### Daily Streak Worker
 
@@ -473,9 +473,10 @@ POST /api/compliments/send
          └─ Insert compliment (status: pending)
          └─ enqueue('moderation', { complimentId })
                       │
-              Vercel Cron (every 1 min)
+              cron-job.org (every 1 min)
                       │
          POST /api/workers/moderation
+        (Authorization: Bearer <WORKER_SECRET>)
                       │
                       ├─ Groq AI moderation
                       └─ Update status
@@ -484,9 +485,10 @@ POST /api/compliments/send
                            │    ├─ enqueue('notifications', { type: 'realtime', ... })
                            │    └─ enqueue('notifications', { type: 'email', ... })
                            │              │
-                           │    Vercel Cron (every 1 min)
+                           │    cron-job.org (every 1 min)
                            │              │
                            │    POST /api/workers/notifications
+                           │ (Authorization: Bearer <WORKER_SECRET>)
                            │         ├─ Soketi real-time push
                            │         └─ Resend email (if enabled)
                            │
@@ -585,7 +587,7 @@ describe('Moderation Worker', () => {
 
 ### Retry Behavior
 
-Jobs remain in the queue if the worker crashes or calls `nack()`. Vercel Cron will re-trigger the worker on the next cycle (next minute), giving automatic retries without any extra config.
+Jobs remain in the queue if the worker crashes or calls `nack()`. cron-job.org will re-trigger the worker on the next cycle (next minute), giving automatic retries without any extra config.
 
 For persistent failures, messages accumulate in the queue and can be inspected via SQL. Set a max retry count by tracking attempts in the payload:
 
@@ -642,9 +644,9 @@ For structured logging, use `console.error` / `console.log` — these appear in 
 
 | Concern | Solution |
 |---|---|
-| Async moderation | `pgmq` queue + Vercel Cron worker |
-| Notifications | `pgmq` queue + Vercel Cron worker |
-| Scheduled streaks | Vercel Cron (or `pg_cron`) |
+| Async moderation | `pgmq` queue + cron-job.org worker (every minute) |
+| Notifications | `pgmq` queue + cron-job.org worker (every minute) |
+| Scheduled streaks | Vercel Cron (daily at midnight UTC) |
 | Retries | Automatic via cron re-trigger + `nack` |
 | Observability | Supabase SQL + Vercel logs |
 | External dependencies | None (queue lives in existing Supabase DB) |
