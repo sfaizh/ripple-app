@@ -635,7 +635,8 @@ jobs:
 
 - **Vercel**: 100 GB bandwidth/month, 100 GB-hours compute
 - **Supabase Postgres**: 512 MB storage
-- **Vercel Cron**: 2 cron jobs on free tier (Hobby plan)
+- **Vercel Cron**: 1 cron job on free tier (Hobby plan) — used for `daily-streak` only
+- **cron-job.org**: Free tier, supports 1-minute intervals for `moderation` and `notifications` workers
 - **Railway Soketi**: Shared CPU, limited to 2 concurrent connections (free tier)
 - **Resend**: 100 emails/day
 - **Groq**: Generous free tier (varies by model)

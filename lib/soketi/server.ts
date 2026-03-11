@@ -1,4 +1,7 @@
+import * as dotenv from 'dotenv';
 import Pusher from 'pusher';
+
+dotenv.config({ path: '.env.local' });
 
 export const soketiServer = new Pusher({
   appId: process.env.SOKETI_APP_ID!,

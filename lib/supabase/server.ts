@@ -1,5 +1,8 @@
+import * as dotenv from 'dotenv';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+
+dotenv.config({ path: '.env.local' });
 
 export async function createClient() {
   const cookieStore = await cookies();

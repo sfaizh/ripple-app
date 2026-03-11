@@ -1,4 +1,7 @@
+import * as dotenv from 'dotenv';
 import Groq from 'groq-sdk';
+
+dotenv.config({ path: '.env.local' });
 
 export interface ModerationResult {
   approved: boolean;
