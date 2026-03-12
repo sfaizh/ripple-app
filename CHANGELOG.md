@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.9.0] - 2026-03-12
+
+### Fixed
+- Home page redirect for authenticated users: `redirect('/inbox')` was inside a `try/catch` block, causing Next.js's internal `RedirectError` to be swallowed — logged-in users saw the landing page with the wrong Navbar state; moved redirect outside the try block via a `shouldRedirect` flag
+- Navbar showed "Sign in / Get started" for authenticated users on the home page (consequence of the redirect bug above)
+
+### Changed
+- Removed "Create account" and "Sign in" links from the bottom of the hero section — the Navbar already surfaces these actions
+
 ## [0.8.0] - 2026-03-12
 
 ### Added
