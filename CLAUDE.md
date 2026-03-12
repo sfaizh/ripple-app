@@ -154,6 +154,7 @@ When asked to "update changelog and commit":
 
 <optional body describing why, not what>
 
+Co-Authored-By: Faizan H <faizanh53@gmail.com>
 Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>
 ```
 
