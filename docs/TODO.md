@@ -80,7 +80,7 @@
 - [ ] Theme selector UI in settings
 - [ ] CSS variables for theme colors
 
-### Response Threads
+### Response Threads *Skip this for the current project*
 - [ ] Database: add parentId field for threading
 - [ ] API: POST /api/compliments/reply
 - [ ] UI: Reply button on compliment cards

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { Sparkles, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { CategorySelector, type Category } from './CategorySelector';
@@ -28,6 +29,7 @@ interface SendFormProps {
 
 export function SendForm({ recipientUsername, onSuccess }: SendFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
 
   const form = useForm<SendFormData>({
@@ -42,6 +44,31 @@ export function SendForm({ recipientUsername, onSuccess }: SendFormProps) {
   });
 
   const messageLength = form.watch('message')?.length || 0;
+  const currentCategory = form.watch('category');
+
+  const handleGenerate = async () => {
+    setIsGenerating(true);
+    try {
+      const res = await fetch('/api/compliments/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category: currentCategory }),
+      });
+
+      if (!res.ok) throw new Error('Generation failed');
+
+      const { message } = await res.json();
+      form.setValue('message', message, { shouldValidate: true });
+    } catch {
+      toast({
+        title: 'Could not generate',
+        description: 'Try writing your own — it means more anyway!',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const onSubmit = async (data: SendFormData) => {
     setIsSubmitting(true);
@@ -90,14 +117,40 @@ export function SendForm({ recipientUsername, onSuccess }: SendFormProps) {
 
       {/* Message */}
       <div>
-        <label className="block text-sm font-medium text-ink mb-2">
-          Your message
-        </label>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-sm font-medium text-ink">Your message</label>
+          <button
+            type="button"
+            onClick={handleGenerate}
+            disabled={isGenerating}
+            className={cn(
+              'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-all',
+              'bg-gradient-to-r from-primary to-teal text-white shadow-sm',
+              'hover:shadow-md hover:scale-[1.03] active:scale-[0.98]',
+              'disabled:opacity-60 disabled:cursor-not-allowed disabled:scale-100'
+            )}
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Generating…
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-3 w-3" />
+                Generate with AI
+              </>
+            )}
+          </button>
+        </div>
         <Textarea
           {...form.register('message')}
-          placeholder="Write something kind and genuine..."
+          placeholder="Write something kind and genuine…"
           rows={4}
-          className="resize-none"
+          className={cn(
+            'resize-none transition-all',
+            isGenerating && 'opacity-60'
+          )}
           maxLength={280}
         />
         {form.formState.errors.message && (
@@ -138,7 +191,7 @@ export function SendForm({ recipientUsername, onSuccess }: SendFormProps) {
       </div>
 
       <Button type="submit" className="w-full" disabled={isSubmitting}>
-        {isSubmitting ? 'Sending...' : 'Send Compliment ✨'}
+        {isSubmitting ? 'Sending…' : 'Send Compliment ✨'}
       </Button>
     </form>
   );

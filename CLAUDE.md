@@ -142,7 +142,6 @@ When asked to "update changelog and commit":
 1. Update `CHANGELOG.md` with the changes
 2. Run `git add .` to stage all changes
 3. Create a commit with a clear message (use conventional commits: `feat:`, `fix:`, `docs:`, `test:`, `chore:`)
-4. Run `git push` to push to `origin/main`
 
 **Commit message format:**
 ```

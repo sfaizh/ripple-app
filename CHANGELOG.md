@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.8.0] - 2026-03-12
+
+### Added
+- **AI compliment generation**: New `POST /api/compliments/generate` endpoint uses Groq (`llama-3.1-8b-instant`) to generate heartfelt, category-aware compliment suggestions
+- **"Generate with AI" button in SendForm**: Pill-shaped gradient button inline with the message label — one click fills the textarea with a Groq-generated compliment; shows loading spinner while generating
+- **Animated hero section** (`components/home/HeroSection.tsx`): Fully reworked landing page with framer-motion entrance animations, mouse-parallax floating orbs (primary / teal / warm), and a subtle grid overlay
+
+### Changed
+- **Home page CTA**: Replaced "View my inbox" + feature pill grid with a direct `@username` input + "Send a compliment" button; routing goes straight to `/wall/[username]` — no sign-up required to send
+- **Home page layout**: Removed the three AI-generated feature-pill cards; page is now a clean, full-screen animated hero
+
+### Documentation
+- Marked all Stage 2 real-time notification items as complete in `docs/TODO.md`
+
 ## [0.7.0] - 2026-03-12
 
 ### Changed
