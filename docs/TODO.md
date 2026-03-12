@@ -3,27 +3,27 @@
 ## Stage 1 - Immediate needs
 
 ### Authentication (Supabase Auth)
-- [ ] Set up Supabase Auth with email/password
-- [ ] Create user registration flow
-- [ ] Implement sign-in page
-- [ ] Add protected route middleware
-- [ ] Generate unique username/slug on signup
-- [ ] Create user profile model (username, email, createdAt)
+- [x] Set up Supabase Auth with email/password
+- [x] Create user registration flow
+- [x] Implement sign-in page
+- [x] Add protected route middleware
+- [x] Generate unique username/slug on signup
+- [x] Create user profile model (username, email, createdAt)
 
 ### Send/Receive Compliments - Core Flow
-- [ ] Database schema for compliments table
-- [ ] API route: POST /api/compliments/send
-- [ ] API route: GET /api/compliments/inbox
-- [ ] Compliment send form (category selection, message input)
-- [ ] Compliment inbox view (list of received compliments)
-- [ ] User wall page: /wall/[username] (public compliment sending)
+- [x] Database schema for compliments table
+- [x] API route: POST /api/compliments/send
+- [x] API route: GET /api/compliments/inbox
+- [x] Compliment send form (category selection, message input)
+- [x] Compliment inbox view (list of received compliments)
+- [x] User wall page: /wall/[username] (public compliment sending)
 
 ### Basic Reveal Animation
-- [ ] Create blur overlay component
-- [ ] Implement click-to-reveal interaction
-- [ ] Add fade-in animation with framer-motion or CSS
-- [ ] Mark compliment as "read" after reveal
-- [ ] Update database: isRead field
+- [x] Create blur overlay component
+- [x] Implement click-to-reveal interaction
+- [x] Add fade-in animation with framer-motion or CSS
+- [x] Mark compliment as "read" after reveal
+- [x] Update database: isRead field
 
 ---
 
@@ -41,12 +41,12 @@
 - [ ] API: allow sender to select clue type (optional)
 
 ### Real-time Notifications (Soketi)
-- [ ] Set up Soketi server client
-- [ ] Set up Soketi client SDK
-- [ ] Create notification channel per user: private-user-{userId}
-- [ ] Trigger event on new compliment: "new-compliment"
-- [ ] Frontend: Subscribe to user channel
-- [ ] Show toast notification: "You have a secret compliment waiting"
+- [x] Set up Soketi server client
+- [x] Set up Soketi client SDK
+- [x] Create notification channel per user: private-user-{userId}
+- [x] Trigger event on new compliment: "new-compliment"
+- [x] Frontend: Subscribe to user channel
+- [x] Show toast notification: "You have a secret compliment waiting"
 
 ### Email Notifications (Resend) - *Skip this for the current project*
 - [ ] Set up Resend API key
@@ -57,13 +57,13 @@
 - [ ] User preference: email notification on/off
 
 ### AI Moderation (Groq)
-- [ ] Set up Groq API key in Vercel env vars
-- [ ] Create moderation prompt template (filter: abuse, sexual, toxic, dangerous, hate)
-- [ ] Queue worker: moderation worker (`/api/workers/moderation`)
-- [ ] Moderation flow: enqueue on send → worker moderates → approve/reject
-- [ ] Store moderation status in database (pending, approved, rejected)
-- [ ] Only show approved compliments to recipient
-- [ ] Configure cron-job.org to POST `/api/workers/moderation` every minute with `Authorization: Bearer <WORKER_SECRET>` header (Vercel Hobby throttles per-minute crons)
+- [x] Set up Groq API key in Vercel env vars
+- [x] Create moderation prompt template (filter: abuse, sexual, toxic, dangerous, hate)
+- [x] Queue worker: moderation worker (`/api/workers/moderation`)
+- [x] Moderation flow: enqueue on send → worker moderates → approve/reject
+- [x] Store moderation status in database (pending, approved, rejected)
+- [x] Only show approved compliments to recipient
+- [x] Configure cron-job.org to POST `/api/workers/moderation` every minute with `Authorization: Bearer <WORKER_SECRET>` header (Vercel Hobby throttles per-minute crons)
 
 ### Trending Wall *Skip this for the current project*
 - [ ] Public feed page: /trending
@@ -95,16 +95,16 @@
 - [ ] Event mode: wedding/conference walls
 
 ### Analytics
-- [ ] Track: compliments sent, received, read
-- [ ] Shareable stats page: "You've made 23 people smile this month"
+- [x] Track: compliments sent, received, read
+- [x] Shareable stats page: "You've made 23 people smile this month"
 - [ ] OG image generation for stats
 - [ ] Insights: most active day, favorite category
 
-### Viral Mechanics *Skip this for the current project*
+### Viral Mechanics
 - [ ] "Get 5, Give 1": nudge system after receiving 5
-- [ ] Compliment streaks: track daily sends
+- [x] Compliment streaks: track daily sends
 - [ ] Streak reward: unlock custom theme after 7 days
-- [ ] Database: user stats table (sentCount, receivedCount, streak)
+- [x] Database: user stats table (sentCount, receivedCount, streak)
 
 ---
 
@@ -127,7 +127,7 @@
 ### Testing
 - [ ] Unit tests for moderation logic
 - [ ] Integration tests for API routes
-- [ ] E2E tests for user flows
+- [x] E2E tests for user flows
 - [ ] Load testing for database queries
 - [ ] Groq API mock for testing
 
