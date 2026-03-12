@@ -26,7 +26,7 @@ export function CopyButton({ text, label = 'Copy' }: CopyButtonProps) {
   return (
     <button
       onClick={handleCopy}
-      className="text-xs text-white/80 hover:text-white font-medium shrink-0 transition-colors"
+      className="text-xs text-primary hover:text-primary-dark font-medium shrink-0 transition-colors cursor-pointer"
     >
       {copied ? 'Copied!' : label}
     </button>

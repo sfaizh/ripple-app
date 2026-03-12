@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { Navbar } from '@/components/shared/Navbar';
 import { WallSendForm } from '@/components/wall/WallSendForm';
 import { ComplimentCard } from '@/components/compliment/ComplimentCard';
+import { CopyButton } from '@/components/shared/CopyButton';
 
 interface WallPageProps {
   params: Promise<{ username: string }>;
@@ -43,32 +44,8 @@ export default async function WallPage({ params }: WallPageProps) {
     notFound();
   }
 
-  const rawCompliments = await db.query.compliments.findMany({
-    where: and(
-      eq(compliments.recipientId, wallUser.id),
-      eq(compliments.isPublic, true),
-      eq(compliments.moderationStatus, 'approved')
-    ),
-    orderBy: [desc(compliments.createdAt)],
-    limit: 20,
-    columns: {
-      id: true,
-      category: true,
-      message: true,
-      clueType: true,
-      clueText: true,
-      createdAt: true,
-    },
-  });
-
-  const wallCompliments = rawCompliments.map((c) => ({
-    ...c,
-    createdAt: c.createdAt.toISOString(),
-    isRead: true,
-    readAt: null,
-  }));
-
-  // Get current logged-in user (for Navbar)
+  // Determine if viewing own wall (will be set after fetching current user)
+  let isOwnWall = false;
   let currentUser = null;
   try {
     const supabase = await createClient();
@@ -79,12 +56,39 @@ export default async function WallPage({ params }: WallPageProps) {
         columns: { id: true, username: true, email: true },
       });
       currentUser = profile ? { username: profile.username, email: profile.email } : null;
+      isOwnWall = currentUser?.username === username;
     }
   } catch {
     // DB not yet configured
   }
 
-  const isOwnWall = currentUser?.username === username;
+  // Fetch compliments based on whether viewing own wall
+  const rawCompliments = await db.query.compliments.findMany({
+    where: and(
+      eq(compliments.recipientId, wallUser.id),
+      eq(compliments.moderationStatus, 'approved'),
+      isOwnWall ? undefined : eq(compliments.isPublic, true)
+    ),
+    orderBy: [desc(compliments.createdAt)],
+    limit: 50,
+    columns: {
+      id: true,
+      category: true,
+      message: true,
+      clueType: true,
+      clueText: true,
+      createdAt: true,
+      isPublic: true,
+    },
+  });
+
+  const wallCompliments = rawCompliments.map((c) => ({
+    ...c,
+    createdAt: c.createdAt.toISOString(),
+    isRead: true,
+    readAt: null,
+  }));
+
   const gradient = themeGradients[wallUser.theme as keyof typeof themeGradients] || themeGradients.default;
 
   return (
@@ -117,8 +121,9 @@ export default async function WallPage({ params }: WallPageProps) {
             <p className="text-ink-muted mb-4">
               This is your wall. Share your link so others can send you compliments!
             </p>
-            <div className="bg-surface-alt rounded-lg px-4 py-3 font-mono text-sm text-ink">
-              {typeof window !== 'undefined' ? window.location.href : `/wall/${username}`}
+            <div className="bg-surface-alt rounded-lg px-4 py-3 font-mono text-sm text-ink flex items-center justify-between">
+              <span>{`/wall/${username}`}</span>
+              <CopyButton text={`${process.env.NEXT_PUBLIC_APP_URL}/wall/${username}`} label="Copy" />
             </div>
           </div>
         ) : (
@@ -134,16 +139,36 @@ export default async function WallPage({ params }: WallPageProps) {
         )}
 
         {wallCompliments.length > 0 && (
-          <section className="mt-8">
-            <h2 className="text-sm font-semibold text-ink-muted uppercase tracking-wide mb-4">
-              Public compliments
-            </h2>
-            <div className="space-y-4">
-              {wallCompliments.map((c) => (
-                <ComplimentCard key={c.id} compliment={c} showReplyButton={false} />
-              ))}
-            </div>
-          </section>
+          <div className="mt-8 space-y-8">
+            {isOwnWall && (
+              <section>
+                <h2 className="text-sm font-semibold text-ink-muted uppercase tracking-wide mb-4">
+                  Private compliments
+                </h2>
+                <div className="space-y-4">
+                  {wallCompliments
+                    .filter((c) => !c.isPublic)
+                    .map((c) => (
+                      <ComplimentCard key={c.id} compliment={c} showReplyButton={false} />
+                    ))}
+                </div>
+              </section>
+            )}
+            {wallCompliments.some((c) => c.isPublic) && (
+              <section>
+                <h2 className="text-sm font-semibold text-ink-muted uppercase tracking-wide mb-4">
+                  Public compliments
+                </h2>
+                <div className="space-y-4">
+                  {wallCompliments
+                    .filter((c) => c.isPublic)
+                    .map((c) => (
+                      <ComplimentCard key={c.id} compliment={c} showReplyButton={false} />
+                    ))}
+                </div>
+              </section>
+            )}
+          </div>
         )}
       </main>
     </div>

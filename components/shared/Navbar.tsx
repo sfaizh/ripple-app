@@ -40,11 +40,11 @@ export function Navbar({ user }: NavbarProps) {
           {user ? (
             <>
               <Link href="/inbox">
-                <Button variant="ghost" size="sm">Inbox</Button>
+                <Button variant="ghost" size="sm" className="hover:bg-primary hover:text-white">Inbox</Button>
               </Link>
               {user.username && (
                 <Link href={`/wall/${user.username}`}>
-                  <Button variant="ghost" size="sm">My Wall</Button>
+                  <Button variant="ghost" size="sm" className="hover:bg-primary hover:text-white">My Wall</Button>
                 </Link>
               )}
               <Button variant="outline" size="sm" onClick={handleSignOut}>
@@ -54,7 +54,7 @@ export function Navbar({ user }: NavbarProps) {
           ) : (
             <>
               <Link href="/signin">
-                <Button variant="ghost" size="sm">Sign in</Button>
+                <Button variant="ghost" size="sm" className="hover:bg-primary hover:text-white">Sign in</Button>
               </Link>
               <Link href="/signup">
                 <Button size="sm">Get started</Button>
@@ -65,7 +65,7 @@ export function Navbar({ user }: NavbarProps) {
           {/* Theme toggle */}
           <button
             onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-            className="ml-1 h-8 w-8 flex items-center justify-center rounded-md text-ink-muted hover:text-ink hover:bg-surface transition-colors"
+            className="ml-1 h-8 w-8 flex items-center justify-center rounded-md text-ink-muted hover:text-ink hover:bg-surface transition-colors cursor-pointer"
             aria-label="Toggle theme"
           >
             {resolvedTheme === 'dark' ? (

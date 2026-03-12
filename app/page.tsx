@@ -69,7 +69,7 @@ export default async function HomePage() {
                 </Button>
               </Link>
               <Link href="/signin">
-                <Button variant="outline" size="lg" className="w-full sm:w-auto px-8">
+                <Button variant="outline" size="lg" className="w-full sm:w-auto px-8 hover:bg-primary hover:text-white">
                   Sign in
                 </Button>
               </Link>

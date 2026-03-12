@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-03-12
+
+### Added
+- Foundational E2E test suite using Playwright
+  - `e2e/user-flow.spec.ts` — 5 tests for sign-up, inbox stats, anonymous compliment sending, reveal animation
+  - `e2e/moderation-worker.spec.ts` — 5 tests for AI moderation approval/rejection, worker authorization, notification enqueueing
+  - `e2e/README.md` — Instructions for running tests, known limitations, debugging guide
+- Test scripts: `pnpm test:e2e`, `pnpm test:e2e:ui`, `pnpm test:e2e:debug`
+- Playwright configuration with Chromium and HTML reporting
+
+### Documentation
+- Updated `README.md` with AI moderation details and flow diagrams
+- Added E2E testing section to project docs with Playwright integration
+
 ## [0.4.0] - 2026-03-12
 
 ### Fixed

@@ -139,6 +139,41 @@ Key non-obvious variables (see `docs/ENVIRONMENT.md` for full list):
 - Target Lighthouse score > 85
 - API response time < 300ms (p95)
 
+## Version Control & Commit Workflow
+
+### Committing Changes
+When asked to "update changelog and commit":
+1. Update `CHANGELOG.md` with the changes
+2. Run `git add .` to stage all changes
+3. Create a commit with a clear message (use conventional commits: `feat:`, `fix:`, `docs:`, `test:`, `chore:`)
+4. Run `git push` to push to `origin/main`
+
+**Commit message format:**
+```
+<type>: <description>
+
+<optional body describing why, not what>
+
+Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>
+```
+
+### Branch Strategy
+- Work on `main` directly (hobby project, no staging environment)
+- Keep commits atomic and focused
+- Use descriptive commit messages that explain the "why"
+
+### Changelog Entries
+Update `CHANGELOG.md` proactively before asking for a commit:
+- **Added** — new features, new test suites, new endpoints
+- **Fixed** — bug fixes, correctness improvements
+- **Changed** — refactoring, architectural changes, behavior updates
+- **Removed** — deprecated code, deleted features
+- **Documentation** — doc updates, README changes
+
+### Tags & Releases
+- Not yet implemented; will use semantic versioning (MAJOR.MINOR.PATCH)
+- Tag releases when moving to production stages
+
 ## Documentation
 
 - `docs/ARCHITECTURE.md` — System design, event flows

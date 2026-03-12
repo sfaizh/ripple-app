@@ -49,7 +49,7 @@ export function CategorySelector({ value, onChange }: CategorySelectorProps) {
             type="button"
             onClick={() => onChange(category.value)}
             className={cn(
-              'p-4 rounded-lg border-2 transition-all text-left',
+              'p-4 rounded-lg border-2 transition-all text-left cursor-pointer',
               'hover:border-primary hover:bg-surface-alt',
               isSelected
                 ? 'border-primary bg-surface-alt shadow-sm'

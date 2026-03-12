@@ -45,7 +45,7 @@ export function ClueSelector({ value, onChange }: ClueSelectorProps) {
             type="button"
             onClick={() => onChange(clue.value)}
             className={cn(
-              'flex items-center gap-2.5 px-3 py-2.5 rounded-lg border-2 text-left transition-all',
+              'flex items-center gap-2.5 px-3 py-2.5 rounded-lg border-2 text-left transition-all cursor-pointer',
               'hover:border-primary hover:bg-surface-alt',
               isSelected
                 ? 'border-primary bg-surface-alt'

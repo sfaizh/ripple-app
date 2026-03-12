@@ -19,7 +19,7 @@ export async function enqueue<T>(
   const { error } = await supabase.rpc('pgmq_send', {
     queue_name: queue,
     msg: payload,
-    sleep_seconds: delaySeconds,
+    delay: delaySeconds,
   });
 
   if (error) {

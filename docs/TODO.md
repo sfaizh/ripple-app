@@ -1,6 +1,6 @@
 # Ripple - Feature Implementation Checklist
 
-## Immediate needs
+## Stage 1 - Immediate needs
 
 ### Authentication (Supabase Auth)
 - [ ] Set up Supabase Auth with email/password
@@ -27,7 +27,7 @@
 
 ---
 
-## Additional features
+## Stage 2 - Additional features
 
 ### Clue System
 - [ ] Database: add clueType field (linkedin, company, recent, generic)
@@ -60,7 +60,7 @@
 - [ ] Only show approved compliments to recipient
 - [ ] Configure cron-job.org to POST `/api/workers/moderation` every minute with `Authorization: Bearer <WORKER_SECRET>` header (Vercel Hobby throttles per-minute crons)
 
-### Trending Wall
+### Trending Wall *Skip this for the current project*
 - [ ] Public feed page: /trending
 - [ ] API route: GET /api/compliments/trending
 - [ ] Query: public compliments, no names, sorted by recent
@@ -68,7 +68,7 @@
 - [ ] Infinite scroll or pagination
 - [ ] Toggle: opt-in/opt-out for public display
 
-### Themes (3 Options)
+### Themes (3 Options) *Skip this for the current project*
 - [ ] Define 3 theme presets (colors, gradients)
 - [ ] Store user theme preference in database
 - [ ] Apply theme to user wall page
@@ -82,7 +82,7 @@
 - [ ] Thread view: show conversation chain
 - [ ] Anonymous "Thank you" quick reply
 
-### Team Mode
+### Team Mode *Skip this for the current project*
 - [ ] Team model: company name, SSO config, members
 - [ ] Team auth: integrate SSO (OAuth)
 - [ ] Team wall: shared compliment feed
@@ -95,7 +95,7 @@
 - [ ] OG image generation for stats
 - [ ] Insights: most active day, favorite category
 
-### Viral Mechanics
+### Viral Mechanics *Skip this for the current project*
 - [ ] "Get 5, Give 1": nudge system after receiving 5
 - [ ] Compliment streaks: track daily sends
 - [ ] Streak reward: unlock custom theme after 7 days
@@ -103,7 +103,7 @@
 
 ---
 
-## Technical Debt & Optimization
+## Stage 3 - Technical Debt & Optimization
 
 ### Performance
 - [ ] Add database indexes (recipientId, createdAt, moderationStatus)
@@ -135,7 +135,7 @@
 
 ---
 
-## Success Metrics - *Skip this for the current project*
+## Stage 4 - Success Metrics - *Skip this for the current project*
 
 ### MVP Success Criteria
 - ✅ User can create account in < 30 seconds

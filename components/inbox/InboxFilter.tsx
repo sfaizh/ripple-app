@@ -15,7 +15,7 @@ export function InboxFilter({ value, onChange }: InboxFilterProps) {
           key={filter}
           onClick={() => onChange(filter)}
           className={cn(
-            'px-4 py-1.5 rounded-full text-sm font-medium transition-colors',
+            'px-4 py-1.5 rounded-full text-sm font-medium transition-colors cursor-pointer',
             value === filter
               ? 'bg-surface-alt text-primary border border-border-subtle'
               : 'text-ink-muted hover:text-ink hover:bg-surface-alt'
