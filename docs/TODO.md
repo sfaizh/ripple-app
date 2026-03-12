@@ -29,6 +29,11 @@
 
 ## Stage 2 - Additional features
 
+### Send Compliment from Inbox
+- [x] "Send a Compliment" button on inbox page opens a modal
+- [x] Two-step flow: username entry → compliment form (reuses WallSendForm/SendForm)
+- [x] Modal closes and resets after successful send
+
 ### Clue System
 - [ ] Database: add clueType field (linkedin, company, recent, generic)
 - [ ] Clue generation logic based on sender context

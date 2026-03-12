@@ -5,9 +5,10 @@ import { SendForm } from '@/components/compliment/SendForm';
 
 interface WallSendFormProps {
   recipientUsername: string;
+  onSent?: () => void;
 }
 
-export function WallSendForm({ recipientUsername }: WallSendFormProps) {
+export function WallSendForm({ recipientUsername, onSent }: WallSendFormProps) {
   const [sent, setSent] = useState(false);
 
   if (sent) {
@@ -33,7 +34,10 @@ export function WallSendForm({ recipientUsername }: WallSendFormProps) {
   return (
     <SendForm
       recipientUsername={recipientUsername}
-      onSuccess={() => setSent(true)}
+      onSuccess={() => {
+        setSent(true);
+        onSent?.();
+      }}
     />
   );
 }

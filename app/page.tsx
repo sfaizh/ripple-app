@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Navbar } from '@/components/shared/Navbar';
 import { createClient } from '@/lib/supabase/server';
@@ -19,6 +20,7 @@ export default async function HomePage() {
         columns: { id: true, username: true, email: true },
       });
       currentUser = profile ? { username: profile.username, email: profile.email } : null;
+      redirect('/inbox');
     }
   } catch {
     // DB not yet configured

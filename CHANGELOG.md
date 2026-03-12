@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-03-12
+
+### Added
+- Authenticated user landing redirect: logged-in users visiting `/` now redirect immediately to `/inbox`
+- "Send a Compliment" modal on inbox page enables sending compliments to any username without navigating away
+  - Two-step flow: username entry → compliment form (reuses existing `WallSendForm`)
+  - Modal closes and resets after successful send
+- Added `onSent` optional callback prop to `WallSendForm` component for modal integration
+
 ## [0.5.0] - 2026-03-12
 
 ### Added

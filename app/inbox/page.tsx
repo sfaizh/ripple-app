@@ -5,6 +5,7 @@ import { users, compliments } from '@/lib/db/schema';
 import { eq, and, count } from 'drizzle-orm';
 import { Navbar } from '@/components/shared/Navbar';
 import { InboxList } from '@/components/inbox/InboxList';
+import { InboxSendModal } from '@/components/inbox/InboxSendModal';
 import { CopyButton } from '@/components/shared/CopyButton';
 
 export default async function InboxPage() {
@@ -67,6 +68,11 @@ export default async function InboxPage() {
               <p className="text-xs text-ink-muted mt-0.5">{s.label}</p>
             </div>
           ))}
+        </div>
+
+        {/* Send compliment button */}
+        <div className="mb-8">
+          <InboxSendModal />
         </div>
 
         <InboxList />
