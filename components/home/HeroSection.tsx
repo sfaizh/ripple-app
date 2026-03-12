@@ -153,18 +153,6 @@ export function HeroSection() {
           )}
         </motion.div>
 
-        <motion.div
-          {...fadeUp(0.45)}
-          className="mt-10 flex items-center justify-center gap-6 text-sm text-ink-muted"
-        >
-          <a href="/signup" className="hover:text-ink transition-colors font-medium">
-            Create account
-          </a>
-          <span className="opacity-30 text-lg leading-none">·</span>
-          <a href="/signin" className="hover:text-ink transition-colors">
-            Sign in
-          </a>
-        </motion.div>
       </div>
     </div>
   );

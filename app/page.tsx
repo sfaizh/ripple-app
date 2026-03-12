@@ -7,6 +7,9 @@ import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
 export default async function HomePage() {
+  // redirect() throws a RedirectError — must be outside try/catch
+  let shouldRedirect = false;
+
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -16,11 +19,13 @@ export default async function HomePage() {
         where: eq(users.id, user.id),
         columns: { id: true },
       });
-      if (profile) redirect('/inbox');
+      if (profile) shouldRedirect = true;
     }
   } catch {
     // DB not yet configured — render landing page
   }
+
+  if (shouldRedirect) redirect('/inbox');
 
   return (
     <div className="min-h-screen bg-canvas">
