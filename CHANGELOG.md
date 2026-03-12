@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-03-12
+
+### Changed
+- Wall page "Public compliments" / "Private compliments" section headings now only shown when viewing your own wall; visitors (logged-out or another user) see a plain unsectioned list
+
+### Documentation
+- Added public pgmq wrapper SQL functions required for PostgREST RPC access to `docs/DEPLOYMENT.md`
+- Noted that `SUPABASE_SERVICE_ROLE_KEY` must use legacy JWT format (`eyJ...`) not the new `sb_secret_*` format
+- Marked completed features in `docs/TODO.md`
+
 ## [0.6.0] - 2026-03-12
 
 ### Added

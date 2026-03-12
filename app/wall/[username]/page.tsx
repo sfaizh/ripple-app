@@ -140,33 +140,43 @@ export default async function WallPage({ params }: WallPageProps) {
 
         {wallCompliments.length > 0 && (
           <div className="mt-8 space-y-8">
-            {isOwnWall && (
-              <section>
-                <h2 className="text-sm font-semibold text-ink-muted uppercase tracking-wide mb-4">
-                  Private compliments
-                </h2>
-                <div className="space-y-4">
-                  {wallCompliments
-                    .filter((c) => !c.isPublic)
-                    .map((c) => (
-                      <ComplimentCard key={c.id} compliment={c} showReplyButton={false} />
-                    ))}
-                </div>
-              </section>
-            )}
-            {wallCompliments.some((c) => c.isPublic) && (
-              <section>
-                <h2 className="text-sm font-semibold text-ink-muted uppercase tracking-wide mb-4">
-                  Public compliments
-                </h2>
-                <div className="space-y-4">
-                  {wallCompliments
-                    .filter((c) => c.isPublic)
-                    .map((c) => (
-                      <ComplimentCard key={c.id} compliment={c} showReplyButton={false} />
-                    ))}
-                </div>
-              </section>
+            {isOwnWall ? (
+              <>
+                {wallCompliments.some((c) => !c.isPublic) && (
+                  <section>
+                    <h2 className="text-sm font-semibold text-ink-muted uppercase tracking-wide mb-4">
+                      Private compliments
+                    </h2>
+                    <div className="space-y-4">
+                      {wallCompliments
+                        .filter((c) => !c.isPublic)
+                        .map((c) => (
+                          <ComplimentCard key={c.id} compliment={c} showReplyButton={false} />
+                        ))}
+                    </div>
+                  </section>
+                )}
+                {wallCompliments.some((c) => c.isPublic) && (
+                  <section>
+                    <h2 className="text-sm font-semibold text-ink-muted uppercase tracking-wide mb-4">
+                      Public compliments
+                    </h2>
+                    <div className="space-y-4">
+                      {wallCompliments
+                        .filter((c) => c.isPublic)
+                        .map((c) => (
+                          <ComplimentCard key={c.id} compliment={c} showReplyButton={false} />
+                        ))}
+                    </div>
+                  </section>
+                )}
+              </>
+            ) : (
+              <div className="space-y-4">
+                {wallCompliments.map((c) => (
+                  <ComplimentCard key={c.id} compliment={c} showReplyButton={false} />
+                ))}
+              </div>
             )}
           </div>
         )}
