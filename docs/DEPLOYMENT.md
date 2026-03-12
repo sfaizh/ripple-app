@@ -123,6 +123,36 @@ select pgmq.create('moderation');
 select pgmq.create('notifications');
 ```
 
+4. Then create **public wrapper functions** so PostgREST can call pgmq via RPC. The queue client calls these via `supabase.rpc(...)`:
+
+```sql
+CREATE OR REPLACE FUNCTION public.pgmq_send(queue_name text, msg jsonb, delay integer DEFAULT 0)
+RETURNS SETOF bigint
+LANGUAGE sql
+AS 'SELECT pgmq.send($1, $2, $3)';
+
+CREATE OR REPLACE FUNCTION public.pgmq_read(queue_name text, vt integer, qty integer)
+RETURNS SETOF pgmq.message_record
+LANGUAGE sql
+AS 'SELECT pgmq.read($1, $2, $3)';
+
+CREATE OR REPLACE FUNCTION public.pgmq_archive(queue_name text, msg_id bigint)
+RETURNS boolean
+LANGUAGE sql
+AS 'SELECT pgmq.archive($1, $2)';
+
+CREATE OR REPLACE FUNCTION public.pgmq_set_vt(queue_name text, msg_id bigint, vt integer)
+RETURNS SETOF pgmq.message_record
+LANGUAGE sql
+AS 'SELECT pgmq.set_vt($1, $2, $3)';
+
+NOTIFY pgrst, 'reload schema';
+```
+
+> **Why**: pgmq functions live in the `pgmq` schema which isn't exposed by PostgREST by default. These public wrappers proxy the calls through the `public` schema.
+
+> **Important**: `SUPABASE_SERVICE_ROLE_KEY` must be the **legacy `service_role` JWT** (the long `eyJ...` token from Supabase → Settings → API). Supabase now shows a new `sb_secret_*` format key but the `@supabase/supabase-js` SDK does not support it for admin/RPC calls — use the legacy key.
+
 ### 3.2 Generate Worker Secret
 
 ```bash

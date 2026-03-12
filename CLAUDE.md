@@ -102,17 +102,13 @@ pnpm dev
 
 Deployed to Vercel (`https://ripple-black.vercel.app`). Supabase at `lcycnjtlwegbsbqxzrbg.supabase.co`. Soketi on Railway.
 
-Remaining steps (see `docs/DEPLOYMENT.md`):
-- Step 3: Enable pgmq/pg_cron in Supabase SQL editor
-- Supabase dashboard → Authentication → URL Configuration:
-  - Site URL: `https://ripple-black.vercel.app`
-  - Redirect URLs: `https://ripple-black.vercel.app/**` and `http://localhost:3000/**`
+pgmq queues are set up and working. Groq moderation is live. See `docs/DEPLOYMENT.md` for full setup details.
 
 ## Environment Variables
 
 Key non-obvious variables (see `docs/ENVIRONMENT.md` for full list):
 - `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase client
-- `SUPABASE_SERVICE_ROLE_KEY` — Server-only, never expose to client
+- `SUPABASE_SERVICE_ROLE_KEY` — Server-only, must be the **legacy JWT** (`eyJ...`) format, not the new `sb_secret_*` format — the Supabase JS SDK does not support the new key format for admin/RPC calls
 - `DATABASE_URL` — Pooled connection (for Drizzle queries)
 - `DIRECT_URL` — Direct connection (for drizzle-kit migrations)
 - `NEXT_PUBLIC_APP_URL` — Canonical URL (`http://localhost:3000` dev, `https://ripple-black.vercel.app` prod)
