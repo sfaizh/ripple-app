@@ -107,69 +107,25 @@ DIRECT_URL=<supabase direct connection string>
 
 ---
 
-## Step 3: Queue & Workers Setup
+## Step 3: Worker Setup
 
-### 3.1 Enable pgmq and pg_cron in Supabase
-
-1. Go to your Supabase project dashboard
-2. Open **SQL Editor**
-3. Run the following:
-
-```sql
-create extension if not exists pgmq;
-create extension if not exists pg_cron;
-
-select pgmq.create('moderation');
-select pgmq.create('notifications');
-```
-
-4. Then create **public wrapper functions** so PostgREST can call pgmq via RPC. The queue client calls these via `supabase.rpc(...)`:
-
-```sql
-CREATE OR REPLACE FUNCTION public.pgmq_send(queue_name text, msg jsonb, delay integer DEFAULT 0)
-RETURNS SETOF bigint
-LANGUAGE sql
-AS 'SELECT pgmq.send($1, $2, $3)';
-
-CREATE OR REPLACE FUNCTION public.pgmq_read(queue_name text, vt integer, qty integer)
-RETURNS SETOF pgmq.message_record
-LANGUAGE sql
-AS 'SELECT pgmq.read($1, $2, $3)';
-
-CREATE OR REPLACE FUNCTION public.pgmq_archive(queue_name text, msg_id bigint)
-RETURNS boolean
-LANGUAGE sql
-AS 'SELECT pgmq.archive($1, $2)';
-
-CREATE OR REPLACE FUNCTION public.pgmq_set_vt(queue_name text, msg_id bigint, vt integer)
-RETURNS SETOF pgmq.message_record
-LANGUAGE sql
-AS 'SELECT pgmq.set_vt($1, $2, $3)';
-
-NOTIFY pgrst, 'reload schema';
-```
-
-> **Why**: pgmq functions live in the `pgmq` schema which isn't exposed by PostgREST by default. These public wrappers proxy the calls through the `public` schema.
-
-> **Important**: `SUPABASE_SERVICE_ROLE_KEY` must be the **legacy `service_role` JWT** (the long `eyJ...` token from Supabase → Settings → API). Supabase now shows a new `sb_secret_*` format key but the `@supabase/supabase-js` SDK does not support it for admin/RPC calls — use the legacy key.
-
-### 3.2 Generate Worker Secret
+### 3.1 Generate Worker Secret
 
 ```bash
 # Generate a random secret to protect worker routes
 openssl rand -base64 32
 ```
 
-### 3.3 Add Environment Variable to Vercel
+### 3.2 Add Environment Variable to Vercel
 
 ```bash
 # In Vercel dashboard > Settings > Environment Variables
 WORKER_SECRET=your_generated_secret_here
 ```
 
-### 3.4 Configure Vercel Cron
+### 3.3 Configure Vercel Cron
 
-`vercel.json` only includes the daily cron (Hobby plan allows 1 cron per day frequency):
+`vercel.json` includes a single daily cron for streak tracking (Hobby plan allows 1 cron per day):
 
 ```json
 {
@@ -179,21 +135,7 @@ WORKER_SECRET=your_generated_secret_here
 }
 ```
 
-The `moderation` and `notifications` workers run every minute via cron-job.org instead (see Step 3.5).
-
-### 3.5 Configure cron-job.org (replaces Vercel crons for moderation/notifications)
-
-Vercel Hobby plan throttles per-minute crons. Use [cron-job.org](https://cron-job.org) (free, supports 1-minute intervals) to trigger these workers:
-
-1. Create a free account at [cron-job.org](https://cron-job.org)
-2. Create two cron jobs, both set to run **every minute**:
-   - URL: `https://<your-vercel-url>/api/workers/moderation` — Method: **POST**
-   - URL: `https://<your-vercel-url>/api/workers/notifications` — Method: **POST**
-3. For each job, add a request header:
-   - `Authorization: Bearer <WORKER_SECRET>`
-4. `daily-streak` remains on Vercel cron (midnight UTC) — no change needed.
-
-> **Note:** `WORKER_SECRET` must be set both in Vercel environment variables (for the daily-streak cron) and as the `Authorization` header value in each cron-job.org job.
+> **Note:** Moderation runs inline via Next.js `after()` in the send route — no separate cron or worker endpoint needed.
 
 ---
 
@@ -367,8 +309,8 @@ vercel --prod
 
 1. **Homepage**: `https://your-app.vercel.app`
 2. **API Health Check**: `https://your-app.vercel.app/api/health` (create this endpoint)
-3. **Worker routes**: `curl -X POST https://your-app.vercel.app/api/workers/moderation -H "Authorization: Bearer $WORKER_SECRET"` (should return `{"processed":0,...}`)
-4. **Database**: Check Supabase SQL editor — `select count(*) from pgmq.q_moderation;`
+3. **Worker route**: `curl -X POST https://your-app.vercel.app/api/workers/daily-streak -H "Authorization: Bearer $WORKER_SECRET"` (should return `{"activeUsers":0,"milestones":0}`)
+4. **Database**: Check Supabase SQL editor — `select count(*) from compliments;`
 
 ---
 
@@ -378,9 +320,8 @@ vercel --prod
 
 1. **Sign up**: Create test account
 2. **Send compliment**: Use wall link
-3. **Check moderation**: Verify moderation worker ran (check Vercel function logs)
-4. **Check email**: Verify Resend email received
-5. **Check real-time**: Verify Pusher notification appears
+3. **Check moderation**: Within ~2 seconds, check Vercel function logs for `after()` moderation output
+4. **Check real-time**: Verify Soketi notification appears in recipient browser
 6. **Reveal compliment**: Click to reveal
 7. **Check database**: Verify `isRead = true`
 
@@ -575,14 +516,9 @@ jobs:
 ## Deployment Checklist
 
 - [ ] Vercel project created and connected to GitHub
-- [ ] Vercel Postgres database created
-- [ ] Database migrations run (`pnpm drizzle-kit push`)
-- [ ] pgmq and pg_cron extensions enabled in Supabase
-- [ ] Moderation and notifications queues created
+- [ ] Supabase database created and migrations run (`pnpm drizzle-kit push`)
 - [ ] WORKER_SECRET generated and added to Vercel
 - [ ] vercel.json cron configured (daily-streak only)
-- [ ] cron-job.org: moderation worker job created (POST every minute, Authorization header set)
-- [ ] cron-job.org: notifications worker job created (POST every minute, Authorization header set)
 - [ ] Soketi deployed to Railway and credentials configured
 - [ ] Groq API key created and added to Vercel
 - [ ] Resend account created and domain verified
@@ -592,7 +528,7 @@ jobs:
 - [ ] Test AI moderation (toxic content rejected)
 - [ ] Test email delivery (Resend)
 - [ ] Test real-time notifications (Soketi)
-- [ ] Worker routes responding (test with curl + WORKER_SECRET)
+- [ ] Daily streak worker responding (test with curl + WORKER_SECRET)
 - [ ] Lighthouse score > 85 (performance)
 - [ ] Error tracking enabled (Sentry)
 - [ ] Uptime monitoring enabled
@@ -612,14 +548,14 @@ jobs:
 2. Verify `POSTGRES_URL` is set in environment variables
 3. Redeploy
 
-### Issue: Worker Routes Return 401
+### Issue: Daily Streak Worker Returns 401
 
 **Cause**: `WORKER_SECRET` not set or mismatch between Vercel env var and `vercel.json`
 
 **Solution**:
 1. Verify `WORKER_SECRET` is set in Vercel dashboard > "Settings" > "Environment Variables"
-2. Test locally: `curl -X POST http://localhost:3000/api/workers/moderation -H "Authorization: Bearer your-secret"`
-3. Check Vercel logs for `POST /api/workers/*` errors
+2. Test locally: `curl -X POST http://localhost:3000/api/workers/daily-streak -H "Authorization: Bearer your-secret"`
+3. Check Vercel logs for `POST /api/workers/daily-streak` errors
 4. Redeploy after updating env var
 
 ### Issue: Soketi Notifications Not Received
@@ -655,7 +591,8 @@ jobs:
 **Solution**:
 1. Check [console.groq.com](https://console.groq.com) > "API Keys" — verify key is active
 2. Check Groq usage/quota in the dashboard
-3. Check Vercel logs for `/api/workers/moderation` errors
+3. Check Vercel function logs for errors in the `after()` callback from `/api/compliments/send`
+4. On Groq failure, compliments auto-approve — check `moderation_status` in Supabase
 
 ---
 
@@ -666,8 +603,7 @@ jobs:
 - **Vercel**: 100 GB bandwidth/month, 100 GB-hours compute
 - **Supabase Postgres**: 512 MB storage
 - **Vercel Cron**: 1 cron job on free tier (Hobby plan) — used for `daily-streak` only
-- **cron-job.org**: Free tier, supports 1-minute intervals for `moderation` and `notifications` workers
-- **Railway Soketi**: Shared CPU, limited to 2 concurrent connections (free tier)
+- **Railway Soketi**: Self-hosted, no connection or message limits
 - **Resend**: 100 emails/day
 - **Groq**: Generous free tier (varies by model)
 

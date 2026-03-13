@@ -145,8 +145,8 @@ Send a compliment to another user.
 
 **Side Effects:**
 1. Creates compliment with `moderationStatus: pending`
-2. Enqueues job to `moderation` queue with `complimentId`
-3. AI moderation triggered asynchronously via worker
+2. Increments sender `totalSent` (authenticated senders only)
+3. `after()` runs in background: calls Groq for moderation, updates status, triggers Soketi push on approval
 
 **Errors:**
 - `400`: Invalid input (validation failed)
@@ -455,57 +455,6 @@ Generate AI-suggested response to a compliment.
 
 ## Worker Routes
 
-### POST /api/workers/moderation
-
-Processes pending AI moderation jobs from the `moderation` queue.
-
-**Headers:**
-- `Authorization: Bearer <WORKER_SECRET>`
-
-**Response (200):**
-```json
-{
-  "processed": 5,
-  "succeeded": 5,
-  "failed": 0
-}
-```
-
-**Notes:**
-- Called by cron-job.org every minute
-- Dequeues up to 5 jobs per invocation from `pgmq.q_moderation`
-- On success, enqueues notification jobs to `notifications` queue
-
-**Errors:**
-- `401`: Missing or invalid `WORKER_SECRET`
-
----
-
-### POST /api/workers/notifications
-
-Processes pending notification jobs (Soketi push + optional email).
-
-**Headers:**
-- `Authorization: Bearer <WORKER_SECRET>`
-
-**Response (200):**
-```json
-{
-  "processed": 3,
-  "succeeded": 3,
-  "failed": 0
-}
-```
-
-**Notes:**
-- Called by cron-job.org every minute
-- Handles both `type: "realtime"` (Soketi) and `type: "email"` (Resend) jobs
-
-**Errors:**
-- `401`: Missing or invalid `WORKER_SECRET`
-
----
-
 ### POST /api/workers/daily-streak
 
 Runs the daily streak check: increments active streaks, resets inactive, sends milestone rewards.
@@ -714,20 +663,11 @@ curl -X GET "https://ripple.vercel.app/api/compliments/inbox?limit=20" \
 
 ## Worker Testing
 
-### Trigger Workers Locally
+### Trigger Daily Streak Locally
 
 ```bash
-# Trigger moderation worker
-curl -X POST http://localhost:3000/api/workers/moderation \
+curl -X POST http://localhost:3000/api/workers/daily-streak \
   -H "Authorization: Bearer your-worker-secret"
-
-# Trigger notifications worker
-curl -X POST http://localhost:3000/api/workers/notifications \
-  -H "Authorization: Bearer your-worker-secret"
-
-# Seed a test moderation job first
-# (run in a script or Supabase SQL editor)
-# select pgmq.send('moderation', '{"complimentId":"test-id-123"}');
 ```
 
 ---

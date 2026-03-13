@@ -72,11 +72,11 @@ test.describe('User Flow E2E', () => {
     await page.fill('input[type="password"]', testPassword);
     await page.click('button:has-text("Sign in")');
 
-    // 2. Wait for redirect to inbox
-    await page.waitForURL('/inbox', { timeout: 10000 });
+    // 2. Wait for redirect to dashboard
+    await page.waitForURL('/dashboard', { timeout: 10000 });
 
-    // 3. Verify inbox page loads
-    await expect(page.locator('text=Your inbox')).toBeVisible();
+    // 3. Verify dashboard page loads
+    await expect(page.locator('text=Dashboard')).toBeVisible();
 
     // 4. Check for stats row (Received, Sent, Streak)
     const statLabels = page.locator('text=Received|Sent|Streak');
@@ -103,7 +103,7 @@ test.describe('User Flow E2E', () => {
     await page.fill('input[type="password"]', testPassword);
     await page.click('button:has-text("Sign in")');
 
-    await page.waitForURL('/inbox');
+    await page.waitForURL('/dashboard');
 
     // Try to find and click a blurred compliment card
     const complimentCard = page.locator('[data-testid="compliment-card"]').first();

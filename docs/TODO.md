@@ -58,12 +58,9 @@
 ### AI Moderation (Groq)
 - [x] Set up Groq API key in Vercel env vars
 - [x] Create moderation prompt template (filter: abuse, sexual, toxic, dangerous, hate)
-- [x] Queue worker: moderation worker (`/api/workers/moderation`)
-- [x] Moderation flow: enqueue on send → worker moderates → approve/reject
 - [x] Store moderation status in database (pending, approved, rejected)
 - [x] Only show approved compliments to recipient
-- [x] Configure cron-job.org to POST `/api/workers/moderation` every minute with `Authorization: Bearer <WORKER_SECRET>` header (Vercel Hobby throttles per-minute crons)
-- [x] Replace notifications queue with Supabase DB webhook (`/api/webhooks/compliment-approved`) — eliminates ~1 min notification lag
+- [x] Inline moderation via Next.js `after()` in send route — runs Groq immediately after response, triggers Soketi on approval (~1–2s notification lag, no queue or cron needed)
 
 ### Trending Wall *Skip this for the current project*
 - [ ] Public feed page: /trending
@@ -125,7 +122,6 @@
 - [ ] API authentication middleware
 
 ### Testing
-- [x] Unit tests for moderation logic (Vitest — `__tests__/api/workers/moderation.test.ts`)
 - [x] Unit tests for webhook endpoint (Vitest — `__tests__/api/webhooks/compliment-approved.test.ts`)
 - [ ] Integration tests for API routes
 - [x] E2E tests for user flows
@@ -134,7 +130,7 @@
 
 ### Monitoring
 - [ ] Set up error tracking (Sentry)
-- [ ] Monitor worker queue depth and job success rates
+- [ ] Monitor `after()` moderation success/failure rates via Vercel function logs
 - [ ] Track Soketi notification delivery
 - [ ] Monitor email delivery rates
 - [ ] Database query performance monitoring

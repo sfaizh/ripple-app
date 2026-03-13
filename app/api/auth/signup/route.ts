@@ -6,9 +6,13 @@ import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
+const USERNAME_REGEX = /^[a-z][a-z0-9_]{2,19}$/;
+const RESERVED = new Set(['admin', 'api', 'wall', 'dashboard', 'settings', 'signin', 'signup', 'inbox']);
+
 const signupSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8).max(255),
+  username: z.string().optional(),
 });
 
 function generateUsername(): string {
@@ -31,7 +35,30 @@ export async function POST(request: Request) {
       );
     }
 
-    const { email, password } = parsed.data;
+    const { email, password, username: requestedUsername } = parsed.data;
+
+    // Validate custom username if provided
+    if (requestedUsername) {
+      if (!USERNAME_REGEX.test(requestedUsername) || RESERVED.has(requestedUsername)) {
+        return NextResponse.json(
+          { error: 'Invalid username format', code: 'INVALID_USERNAME' },
+          { status: 400 }
+        );
+      }
+
+      const existing = await db.query.users.findFirst({
+        where: eq(users.username, requestedUsername),
+        columns: { id: true },
+      });
+
+      if (existing) {
+        return NextResponse.json(
+          { error: 'Username already taken', code: 'USERNAME_TAKEN' },
+          { status: 409 }
+        );
+      }
+    }
+
     const supabase = await createClient();
 
     // Derive origin from request so it works without NEXT_PUBLIC_APP_URL being set
@@ -66,16 +93,18 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generate unique username
-    let username = generateUsername();
-    let attempts = 0;
-    while (attempts < 5) {
-      const existing = await db.query.users.findFirst({
-        where: eq(users.username, username),
-      });
-      if (!existing) break;
-      username = generateUsername();
-      attempts++;
+    // Determine username: use provided or generate unique one
+    let username = requestedUsername || generateUsername();
+    if (!requestedUsername) {
+      let attempts = 0;
+      while (attempts < 5) {
+        const existing = await db.query.users.findFirst({
+          where: eq(users.username, username),
+        });
+        if (!existing) break;
+        username = generateUsername();
+        attempts++;
+      }
     }
 
     // Create user profile in our DB

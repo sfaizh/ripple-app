@@ -1,10 +1,12 @@
+import { after } from 'next/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { db } from '@/lib/db/client';
 import { users, compliments } from '@/lib/db/schema';
 import { eq, and, gte, count, sql } from 'drizzle-orm';
-import { enqueue } from '@/lib/queue/client';
+import { moderateWithGroq } from '@/lib/ai/moderation';
+import { soketiServer } from '@/lib/soketi/server';
 
 const sendSchema = z.object({
   recipientUsername: z.string().min(1),
@@ -95,19 +97,44 @@ export async function POST(request: Request) {
         .where(eq(users.id, user.id));
     }
 
-    // Try to enqueue for moderation (graceful fallback if queue not set up)
-    try {
-      await enqueue('moderation', { complimentId: newCompliment.id });
-    } catch (queueError) {
-      console.error('Queue unavailable, auto-approving for dev:', queueError);
-      // In dev without queue: auto-approve and mirror what the moderation worker does
-      await db.update(compliments)
-        .set({ moderationStatus: 'approved', updatedAt: new Date() })
-        .where(eq(compliments.id, newCompliment.id));
-      await db.update(users)
-        .set({ totalReceived: sql`${users.totalReceived} + 1`, updatedAt: new Date() })
-        .where(eq(users.id, recipient.id));
-    }
+    after(async () => {
+      try {
+        const moderation = await moderateWithGroq(newCompliment.message);
+
+        await db.update(compliments)
+          .set({
+            moderationStatus: moderation.approved ? 'approved' : 'rejected',
+            moderationResult: moderation,
+            updatedAt: new Date(),
+          })
+          .where(eq(compliments.id, newCompliment.id));
+
+        if (moderation.approved) {
+          await db.update(users)
+            .set({ totalReceived: sql`${users.totalReceived} + 1`, updatedAt: new Date() })
+            .where(eq(users.id, recipient.id));
+
+          try {
+            await soketiServer.trigger(
+              `private-user-${recipient.id}`,
+              'new-compliment',
+              { message: 'You have a secret compliment waiting', timestamp: new Date().toISOString() }
+            );
+          } catch (err) {
+            console.error('Soketi push failed (non-fatal):', err);
+          }
+        }
+      } catch (err) {
+        // Groq failed — auto-approve so the compliment isn't lost
+        console.error('Moderation failed, auto-approving:', err);
+        await db.update(compliments)
+          .set({ moderationStatus: 'approved', updatedAt: new Date() })
+          .where(eq(compliments.id, newCompliment.id));
+        await db.update(users)
+          .set({ totalReceived: sql`${users.totalReceived} + 1`, updatedAt: new Date() })
+          .where(eq(users.id, recipient.id));
+      }
+    });
 
     return NextResponse.json({
       success: true,

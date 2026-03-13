@@ -105,30 +105,21 @@ This document analyzes costs for running Ripple as a hobby project with 100-1000
 
 ---
 
-### 4. Supabase Queues / pgmq (Async Processing)
+### 4. Async Moderation (Inline via `after()`)
 
-**Free Tier Limits:**
-- Included in Supabase free tier (no separate service)
-- `pgmq` is a PostgreSQL extension, runs inside your existing DB
-- cron-job.org: Free tier, 1-minute intervals for per-minute cron jobs
+**No external service needed.** Moderation runs inside the same Vercel serverless invocation as `POST /api/compliments/send` using Next.js `after()`. Groq is called once per compliment — same call count as the old queue approach, just triggered immediately instead of up to a minute later.
 
 **Usage Estimates:**
 
-| Users | Compliments/Month | Queue Jobs | Cost |
-|-------|-------------------|------------|------|
-| 100   | ~500              | ~1,500     | **$0** |
-| 500   | ~2,500            | ~7,500     | **$0** |
-| 1000  | ~5,000            | ~15,000    | **$0** |
+| Users | Compliments/Month | `after()` Invocations | Cost |
+|-------|-------------------|-----------------------|------|
+| 100   | ~500              | ~500                  | **$0** |
+| 500   | ~2,500            | ~2,500                | **$0** |
+| 1000  | ~5,000            | ~5,000                | **$0** |
 
-**Assumptions:**
-- Each compliment enqueues 1 moderation job + 2 notification jobs
-- Workers run via cron-job.org every minute (counts as serverless invocations)
-- Daily streak check: Vercel Cron (1 daily invocation, included in Hobby plan)
+**Note**: `after()` runs within the same 100 GB-hours Vercel compute budget. Each invocation adds <2 seconds of tail compute, well within free tier limits.
 
-**Note**: Vercel free tier includes 100 GB-hours compute — worker invocations
-are lightweight (<100ms each) and negligible against this limit.
-
-**Verdict**: ✅ **FREE** — pgmq runs inside your existing Supabase DB at no extra cost
+**Verdict**: ✅ **FREE** — no separate queue service, no cron-job.org account needed
 
 ---
 
@@ -192,8 +183,8 @@ Use instead:
 |---------|------|
 | Vercel Hosting | $0 |
 | Supabase (Database + Auth) | $0 |
-| Soketi (Real-time on fly.io) | $0 |
-| Supabase pgmq (Queue) | $0 (built into Supabase) |
+| Soketi (Real-time on Railway) | $0 |
+| Moderation (`after()` inline) | $0 (no extra service) |
 | Groq API | $0 |
 | Resend | $0 (skip emails) |
 | **TOTAL** | **$0/month** ✅ |
@@ -209,7 +200,7 @@ Use instead:
 | Vercel Hosting | $0 |
 | Supabase | $0 |
 | Soketi | $0 |
-| Supabase pgmq | $0 |
+| Moderation (`after()` inline) | $0 |
 | Groq API | $0 |
 | Resend | **$20** (if >100 emails/day) |
 | **TOTAL** | **$20/month** ⚠️ |
@@ -225,7 +216,7 @@ Use instead:
 | Vercel Hosting | $0 |
 | Supabase | $0 (unlimited compute) |
 | Soketi | $0 (self-hosted) |
-| Supabase pgmq | $0 |
+| Moderation (`after()` inline) | $0 |
 | Groq API | $0 |
 | Resend | $0 (skip emails) |
 | **TOTAL** | **$0/month** ✅ |
@@ -352,16 +343,14 @@ Set up alerts to avoid surprise bills:
 
 - [ ] Vercel: Set bandwidth alert at 80 GB (dashboard)
 - [ ] Supabase: Monitor storage (dashboard > Database > Usage)
-- [ ] Supabase: Monitor pgmq queue depth (`select count(*) from pgmq.q_moderation`)
-- [ ] Soketi: Monitor fly.io egress (160 GB limit/month)
+- [ ] Soketi: Monitor Railway usage in dashboard
 - [ ] Groq: Monitor usage in Groq console dashboard
 - [ ] Resend: Count emails sent/day if using (stay under 90)
 
 **Tools:**
 - Vercel dashboard: Usage tab
 - Supabase dashboard: Usage tab + SQL editor for queue depth
-- Vercel dashboard: Functions tab for worker invocation counts
-- fly.io dashboard: Metrics tab
+- Vercel dashboard: Functions tab for send route invocation counts and `after()` logs
 
 ---
 

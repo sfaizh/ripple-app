@@ -32,7 +32,7 @@ export async function updateSession(request: NextRequest) {
 
   // Protected routes
   const isProtectedRoute =
-    request.nextUrl.pathname.startsWith('/inbox') ||
+    request.nextUrl.pathname.startsWith('/dashboard') ||
     request.nextUrl.pathname.startsWith('/settings');
 
   if (isProtectedRoute && !user) {
@@ -48,7 +48,7 @@ export async function updateSession(request: NextRequest) {
 
   if (isAuthRoute && user) {
     const url = request.nextUrl.clone();
-    url.pathname = '/inbox';
+    url.pathname = '/dashboard';
     return NextResponse.redirect(url);
   }
 

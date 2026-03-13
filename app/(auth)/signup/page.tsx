@@ -1,49 +1,102 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { Loader2, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/toast';
 
+const USERNAME_REGEX = /^[a-z][a-z0-9_]{2,19}$/;
+
 const signupSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   confirmPassword: z.string(),
+  username: z.string().refine(
+    (v) => v === '' || USERNAME_REGEX.test(v),
+    { message: '3–20 chars, start with a letter, lowercase letters/digits/underscores only' }
+  ).optional(),
 }).refine((d) => d.password === d.confirmPassword, {
   message: "Passwords don't match",
   path: ['confirmPassword'],
 });
 
 type SignupData = z.infer<typeof signupSchema>;
+type AvailabilityState = 'idle' | 'checking' | 'available' | 'taken' | 'invalid';
 
 export default function SignUpPage() {
-  const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [usernameValue, setUsernameValue] = useState('');
+  const [availability, setAvailability] = useState<AvailabilityState>('idle');
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const form = useForm<SignupData>({
     resolver: zodResolver(signupSchema),
-    defaultValues: { email: '', password: '', confirmPassword: '' },
+    defaultValues: { email: '', password: '', confirmPassword: '', username: '' },
   });
 
+  useEffect(() => {
+    if (!usernameValue) {
+      setAvailability('idle');
+      return;
+    }
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    setAvailability('checking');
+
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/users/check-username?username=${encodeURIComponent(usernameValue)}`);
+        const json = await res.json();
+        if (json.error) {
+          setAvailability('invalid');
+        } else {
+          setAvailability(json.available ? 'available' : 'taken');
+        }
+      } catch {
+        setAvailability('idle');
+      }
+    }, 400);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [usernameValue]);
+
   const onSubmit = async (data: SignupData) => {
+    if (usernameValue && availability === 'taken') {
+      form.setError('username', { message: 'Username is already taken' });
+      return;
+    }
+    if (usernameValue && availability === 'invalid') {
+      form.setError('username', { message: 'Invalid username format' });
+      return;
+    }
+
     setIsLoading(true);
     try {
+      const body: Record<string, string> = { email: data.email, password: data.password };
+      if (usernameValue && availability === 'available') body.username = usernameValue;
+
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: data.email, password: data.password }),
+        body: JSON.stringify(body),
       });
 
       const json = await res.json();
 
       if (!res.ok) {
+        if (res.status === 409 && json.code === 'USERNAME_TAKEN') {
+          form.setError('username', { message: 'Username was just taken, try another' });
+          return;
+        }
         throw new Error(json.error || 'Failed to create account');
       }
 
@@ -124,16 +177,60 @@ export default function SignUpPage() {
                 )}
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-ink mb-1">
+                  Username <span className="text-ink-muted font-normal">(optional)</span>
+                </label>
+                <div className="relative">
+                  <Input
+                    {...form.register('username')}
+                    placeholder="e.g. alice_blue"
+                    autoComplete="username"
+                    value={usernameValue}
+                    onChange={(e) => {
+                      const v = e.target.value.toLowerCase();
+                      setUsernameValue(v);
+                      form.setValue('username', v);
+                    }}
+                    className="pr-8"
+                  />
+                  <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                    {usernameValue && availability === 'checking' && (
+                      <Loader2 className="h-4 w-4 animate-spin text-ink-muted" />
+                    )}
+                    {usernameValue && availability === 'available' && (
+                      <Check className="h-4 w-4 text-green-500" />
+                    )}
+                    {usernameValue && (availability === 'taken' || availability === 'invalid') && (
+                      <X className="h-4 w-4 text-red-500" />
+                    )}
+                  </div>
+                </div>
+                {usernameValue && availability === 'taken' && (
+                  <p className="text-xs text-red-500 mt-1">Username already taken</p>
+                )}
+                {usernameValue && availability === 'invalid' && (
+                  <p className="text-xs text-red-500 mt-1">
+                    3–20 chars, start with a letter, lowercase letters/digits/underscores only
+                  </p>
+                )}
+                {usernameValue && availability === 'available' && (
+                  <p className="text-xs text-green-600 mt-1">Username available!</p>
+                )}
+                {form.formState.errors.username && (
+                  <p className="text-xs text-red-500 mt-1">{form.formState.errors.username.message}</p>
+                )}
+                {!usernameValue && (
+                  <p className="text-xs text-ink-muted mt-1">Leave blank to auto-generate</p>
+                )}
+              </div>
+
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? 'Creating account...' : 'Create account'}
               </Button>
             </form>
 
             <p className="text-center text-sm text-ink-muted mt-4">
-              A unique username will be generated for you.
-            </p>
-
-            <p className="text-center text-sm text-ink-muted mt-2">
               Already have an account?{' '}
               <Link href="/signin" className="text-primary hover:underline font-medium">
                 Sign in

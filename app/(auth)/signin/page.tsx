@@ -43,7 +43,7 @@ export default function SignInPage() {
       }
 
       toast({ title: 'Welcome back!', description: 'Signed in successfully.' });
-      router.push('/inbox');
+      router.push('/dashboard');
       router.refresh();
     } catch (error: unknown) {
       toast({

@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.1.0] - 2026-03-13
+
+### Added
+- **Custom username at signup**: Optional username field on the signup form with 400ms debounced availability check — inline ✓/✗/spinner feedback; auto-generates if left blank
+- **Username edit on dashboard**: Pencil icon in the wall link card opens an inline edit row with live availability check, Save/Cancel buttons, and auto-refreshes the page on success
+- **`GET /api/users/check-username`**: Public endpoint for username availability — validates format (`^[a-z][a-z0-9_]{2,19}$`), blocks reserved words, returns `{ available: bool }`
+
+### Changed
+- **`/inbox` → `/dashboard`**: Route renamed; `app/inbox/` directory removed; `app/dashboard/` created with `page.tsx` + `UsernameEdit.tsx`
+- Dashboard page heading changed from "Your inbox" to "Dashboard"
+- Navbar "Inbox" link → "Dashboard" (`href="/dashboard"`)
+- All internal redirects updated: `app/page.tsx`, `app/(auth)/signin/page.tsx`, `app/api/auth/confirm/route.ts`, `lib/supabase/middleware.ts`
+- `PATCH /api/users/me/settings` now accepts an optional `username` field — validates format and uniqueness (allows keeping own current username)
+- `POST /api/auth/signup` now accepts an optional `username` — validates and checks uniqueness before insert; falls back to auto-generate if omitted
+
+### Documentation
+- Updated `docs/TODO.md`: marked custom username and inbox→dashboard rename as complete
+
 ## [1.0.0] - 2026-03-13
 
 ### Added

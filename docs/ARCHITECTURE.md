@@ -2,7 +2,7 @@
 
 ## High-Level Architecture
 
-Ripple is a Next.js application using an event-driven architecture for async processing:
+Ripple is a Next.js application. Moderation runs inline (non-blocking) using Next.js `after()` — no separate queue service needed.
 
 ```
 ┌─────────────┐
@@ -20,34 +20,34 @@ Ripple is a Next.js application using an event-driven architecture for async pro
 │  │  API Routes                         │    │
 │  │  - /api/auth/[...all]              │    │
 │  │  - /api/compliments/*              │    │
-│  │  - /api/workers/* (cron workers)   │    │
+│  │  - /api/workers/daily-streak       │    │
 │  └───────────┬────────────────────────┘    │
-│              │                              │
+│              │  after() callback            │
 │  ┌───────────▼────────────────────────┐    │
-│  │  Queue Client (pgmq)               │    │
-│  │  - enqueue('moderation', ...)      │    │
-│  │  - enqueue('notifications', ...)   │    │
-│  └───────────┬────────────────────────┘    │
-└──────────────┼──────────────────────────────┘
+│  │  Inline Moderation (non-blocking)  │    │
+│  │  - moderateWithGroq()              │    │
+│  │  - update DB status                │    │
+│  │  - soketiServer.trigger()          │    │
+│  └────────────────────────────────────┘    │
+└──────────────────────────────────────────────┘
                │
-    ┌──────────┴───────────┬──────────────┐
-    │                      │              │
-    ▼                      ▼              ▼
-┌─────────┐       ┌──────────────┐   ┌─────────┐
-│Supabase │       │  pgmq queues │   │ Soketi  │
-│Postgres │       │  (in-DB)     │   │(fly.io) │
-│         │       │              │   │         │
-│ Users   │       │ Queues:      │   │ Notify  │
-│Complmts │       │ - moderation │   │ Users   │
-│ Stats   │       │ - notifs     │   │         │
-│ pgmq    │       └───┬──────────┘   └─────────┘
-└─────────┘           │
-              ┌───────┴────────┬─────────┐
-              ▼                ▼         ▼
-         ┌────────┐      ┌─────────┐  ┌────────┐
-         │  Groq  │      │ Resend  │  │Vercel  │
-         │   AI   │      │  Email  │  │ Cron   │
-         └────────┘      └─────────┘  └────────┘
+    ┌──────────┴───────────┐
+    │                      │
+    ▼                      ▼
+┌─────────┐           ┌─────────┐
+│Supabase │           │ Soketi  │
+│Postgres │           │(Railway)│
+│         │           │         │
+│ Users   │           │ Notify  │
+│Complmts │           │ Users   │
+│ Stats   │           │         │
+└────┬────┘           └─────────┘
+     │
+     ▼
+┌────────┐
+│  Groq  │
+│   AI   │
+└────────┘
 ```
 
 ---
@@ -67,22 +67,22 @@ Ripple is a Next.js application using an event-driven architecture for async pro
 - **Database**: Supabase (PostgreSQL)
 - **ORM**: Drizzle ORM
 - **Authentication**: Supabase Auth
-- **Queue**: Supabase pgmq + cron-job.org (per-minute) + Vercel Cron (daily)
+- **Moderation**: Next.js `after()` — inline, non-blocking, no separate queue needed
 - **Real-time**: Soketi (self-hosted on fly.io)
 - **AI**: Groq API (llama-3.1-8b-instant)
 - **Email**: Resend (optional)
 
 ---
 
-## Event-Driven Architecture
+## Inline Async Architecture
 
-### Why Queue-Based?
+Moderation runs inside the same serverless invocation as the send route, using Next.js 16's built-in `after()` API. `after()` executes its callback after the HTTP response is committed — the sender gets an immediate `200 OK` while Groq runs in the background.
 
-1. **Decouples heavy processing** from API routes (AI moderation, notifications)
-2. **Built-in retries** — failed jobs stay in queue and are retried on next cron tick
-3. **Scalable** - async processing doesn't block user requests
-4. **No extra service** — pgmq runs inside existing Supabase DB, zero additional cost
-5. **Observable** — queue depth and archived jobs queryable via SQL
+**Trade-offs vs. a queue:**
+- ✅ ~1–2 second notification lag (vs. up to 1 min with cron polling)
+- ✅ No pgmq setup, no cron-job.org account, no worker route
+- ✅ Same number of Groq API calls
+- ❌ Single attempt only — auto-approves on Groq failure (acceptable for a hobby project)
 
 ---
 
@@ -93,32 +93,22 @@ Ripple is a Next.js application using an event-driven architecture for async pro
 ```
 User → Send Form → POST /api/compliments/send
                          │
+                         ├─ Validate input + rate limit check
                          ├─ Create compliment (status: pending)
-                         ├─ enqueue('moderation', { complimentId })
-                         └─ Return success to user ✅
+                         ├─ Increment sender totalSent
+                         └─ Return { success: true } to sender immediately ✅
 
-cron-job.org (every 1 min) → POST /api/workers/moderation
-(Authorization: Bearer <WORKER_SECRET>)
-
-moderation worker:
+                    after() runs in background (same invocation):
                          │
-                         ├─ Fetch compliment from DB
-                         ├─ Call Groq API for moderation
-                         ├─ Update status (approved/rejected)
-                         └─ If approved → enqueue('notifications', ...)
+                         ├─ moderateWithGroq(message)
+                         ├─ Update compliment status (approved/rejected)
+                         └─ If approved:
+                              ├─ Increment recipient totalReceived
+                              └─ soketiServer.trigger() → real-time toast
 
-cron-job.org (every 1 min) → POST /api/workers/notifications
-(Authorization: Bearer <WORKER_SECRET>)
-
-notifications worker:
-                         │
-                         ├─ Check user email preferences
-                         ├─ Send email via Resend (if enabled)
-                         └─ Trigger Soketi event on user channel
-
-User receives:
-                         ├─ Real-time toast notification (Soketi)
-                         └─ Email notification (optional)
+                    On Groq failure (fallback):
+                         ├─ Auto-approve compliment
+                         └─ Increment recipient totalReceived
 ```
 
 ### Flow 2: Receiving & Revealing
@@ -145,7 +135,7 @@ User clicks to reveal
 ### Flow 3: Real-Time Notifications
 
 ```
-Notifications worker dequeues job (type: "realtime")
+after() callback in POST /api/compliments/send (on approval):
                          │
                          └─ soketiServer.trigger(
                                    channel: "private-user-{recipientId}",
@@ -231,11 +221,10 @@ Vercel Cron (midnight UTC) → POST /api/workers/daily-streak
 ## Scalability Strategy
 
 ### Day 1 (MVP)
-- Supabase free tier: 500 MB storage, unlimited compute hours, pgmq included
+- Supabase free tier: 500 MB storage, unlimited compute hours
 - Vercel Cron (daily): `daily-streak` on Vercel Hobby (1 cron per day)
-- cron-job.org: `moderation` and `notifications` workers (every minute, free tier)
-- Worker invocations negligible against Vercel compute limits
-- Soketi on fly.io: 3 shared CPU VMs (free tier)
+- Moderation runs inline via `after()` — no separate cron or queue service needed
+- Soketi on Railway: self-hosted, zero cost
 - Expected load: 100-1000 users
 
 ### Phase 2 (Growth)
@@ -260,7 +249,7 @@ Vercel Cron (midnight UTC) → POST /api/workers/daily-streak
 - Custom logging with Axiom or Logtail
 
 ### Infrastructure Monitoring
-- Supabase SQL: queue depth (`select count(*) from pgmq.q_moderation`), archived jobs
+- Vercel function logs: moderation results logged per `after()` callback invocation
 - Soketi dashboard: connection stats, event delivery (via metrics endpoint)
 - Supabase dashboard: slow query log, database stats
 

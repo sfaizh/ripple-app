@@ -25,7 +25,7 @@ export default async function HomePage() {
     // DB not yet configured — render landing page
   }
 
-  if (shouldRedirect) redirect('/inbox');
+  if (shouldRedirect) redirect('/dashboard');
 
   return (
     <div className="min-h-screen bg-canvas">

@@ -39,8 +39,8 @@ export function Navbar({ user }: NavbarProps) {
         <nav className="flex items-center gap-1">
           {user ? (
             <>
-              <Link href="/inbox">
-                <Button variant="ghost" size="sm" className="hover:bg-primary hover:text-white">Inbox</Button>
+              <Link href="/dashboard">
+                <Button variant="ghost" size="sm" className="hover:bg-primary hover:text-white">Dashboard</Button>
               </Link>
               {user.username && (
                 <Link href={`/wall/${user.username}`}>
