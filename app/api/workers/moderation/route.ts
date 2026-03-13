@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
-import { dequeue, ack, nack } from '@/lib/queue/client';
+import { dequeue, ack, nack, enqueue } from '@/lib/queue/client';
 import { db } from '@/lib/db/client';
 import { compliments } from '@/lib/db/schema';
 import { eq, sql } from 'drizzle-orm';
 import { users } from '@/lib/db/schema';
 import { moderateWithGroq } from '@/lib/ai/moderation';
-import { enqueue } from '@/lib/queue/client';
 
 async function isAuthorized(): Promise<boolean> {
   const headersList = await headers();
@@ -74,17 +73,8 @@ export async function POST() {
             .set({ totalReceived: sql`${users.totalReceived} + 1`, updatedAt: new Date() })
             .where(eq(users.id, compliment.recipientId));
 
-          await Promise.all([
-            enqueue('notifications', {
-              type: 'realtime',
-              recipientId: compliment.recipientId,
-            }),
-            enqueue('notifications', {
-              type: 'email',
-              complimentId,
-              recipientId: compliment.recipientId,
-            }),
-          ]);
+          // Notifications are now handled by Supabase webhooks
+          // (webhook triggers Soketi push when moderation_status changes to 'approved')
         }
 
         await ack('moderation', msg_id);

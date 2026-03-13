@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.0.0] - 2026-03-13
+
+### Added
+- **Supabase webhook for real-time notifications** (`app/api/webhooks/compliment-approved/route.ts`): Supabase DB webhook fires immediately when `moderation_status` changes to `approved`, triggering the Soketi push directly — eliminates the ~1 minute polling lag from the old notifications queue
+- **Vitest unit test suite** (`pnpm test`): 25 unit tests across two files covering the webhook endpoint (auth, payload guards, happy path, error handling) and moderation worker (approval/rejection flow, idempotency, dead-letter, queue errors)
+
+### Changed
+- Moderation worker no longer enqueues to the `notifications` queue after approval — Supabase webhook handles delivery instead
+- E2E moderation spec updated: replaced outdated "enqueue notifications" test with two webhook endpoint tests (auth rejection, skip non-approval events)
+
+### Removed
+- `app/api/workers/notifications/route.ts` — notifications queue worker is obsolete; cancel the corresponding cron on cron-job.org
+
+### Documentation
+- Updated `docs/TODO.md`: marked webhook notification, unit tests, and Groq mock as complete; updated email notification trigger note to point at the webhook handler
+
 ## [0.9.0] - 2026-03-12
 
 ### Fixed

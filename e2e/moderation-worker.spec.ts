@@ -123,50 +123,52 @@ test.describe('Moderation Worker E2E', () => {
     // This requires direct DB access which we skip in this foundational test
   });
 
-  test('should enqueue notifications after approval', async ({
+  test('webhook endpoint rejects requests without the correct secret', async ({
     request,
   }) => {
-    // 1. Setup: Create user and send compliment
-    const signupRes = await request.post(`${baseURL}/api/auth/signup`, {
-      data: {
-        email: `test.${Date.now()}@ripple-test.local`,
-        password: 'TestPassword123!',
-      },
+    const webhookURL = `${baseURL}/api/webhooks/compliment-approved`;
+
+    const approvalPayload = {
+      type: 'UPDATE',
+      table: 'compliments',
+      schema: 'public',
+      record: { id: 'comp-1', recipient_id: 'user-abc', moderation_status: 'approved' },
+      old_record: { id: 'comp-1', recipient_id: 'user-abc', moderation_status: 'pending' },
+    };
+
+    // 1. No secret header → 401
+    const noSecretRes = await request.post(webhookURL, { data: approvalPayload });
+    expect(noSecretRes.status()).toBe(401);
+
+    // 2. Wrong secret → 401
+    const wrongSecretRes = await request.post(webhookURL, {
+      data: approvalPayload,
+      headers: { 'x-webhook-secret': 'wrong-value' },
     });
-    expect(signupRes.ok()).toBeTruthy();
+    expect(wrongSecretRes.status()).toBe(401);
+  });
 
-    const signupData = await signupRes.json();
+  test('webhook endpoint skips non-approval events gracefully', async ({
+    request,
+  }) => {
+    const webhookURL = `${baseURL}/api/webhooks/compliment-approved`;
 
-    const complimentRes = await request.post(
-      `${baseURL}/api/compliments/send`,
-      {
-        data: {
-          recipientUsername: signupData.user.username,
-          category: 'creative',
-          message: 'Your creative work is inspiring and innovative!',
-          clueType: 'linkedin',
-          isPublic: true,
-        },
-      }
-    );
-    expect(complimentRes.ok()).toBeTruthy();
+    const insertPayload = {
+      type: 'INSERT',
+      table: 'compliments',
+      schema: 'public',
+      record: { id: 'comp-2', recipient_id: 'user-abc', moderation_status: 'pending' },
+      old_record: { id: 'comp-2', recipient_id: 'user-abc', moderation_status: 'pending' },
+    };
 
-    // 2. Run moderation
-    const moderationRes = await request.post(
-      `${baseURL}/api/workers/moderation`,
-      {
-        headers: {
-          Authorization: `Bearer ${WORKER_SECRET}`,
-        },
-      }
-    );
-    expect(moderationRes.ok()).toBeTruthy();
+    const res = await request.post(webhookURL, {
+      data: insertPayload,
+      headers: { 'x-webhook-secret': WORKER_SECRET },
+    });
 
-    // 3. Structural test: moderation endpoint should return stats
-    const result = await moderationRes.json();
-    expect(result).toHaveProperty('processed');
-    expect(result).toHaveProperty('succeeded');
-    expect(result).toHaveProperty('failed');
+    expect(res.ok()).toBeTruthy();
+    const body = await res.json();
+    expect(body.skipped).toBe(true);
   });
 
   test('should handle worker authorization correctly', async ({

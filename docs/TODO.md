@@ -51,8 +51,7 @@
 ### Email Notifications (Resend) - *Skip this for the current project*
 - [ ] Set up Resend API key
 - [ ] Email template: "You have a new compliment"
-- [ ] Queue worker: notifications worker (enqueue after moderation approval)
-- [ ] Trigger: after compliment approved by moderation
+- [ ] Trigger: after compliment approved (add to webhook handler)
 - [ ] Email content: teaser + link to reveal
 - [ ] User preference: email notification on/off
 
@@ -64,6 +63,7 @@
 - [x] Store moderation status in database (pending, approved, rejected)
 - [x] Only show approved compliments to recipient
 - [x] Configure cron-job.org to POST `/api/workers/moderation` every minute with `Authorization: Bearer <WORKER_SECRET>` header (Vercel Hobby throttles per-minute crons)
+- [x] Replace notifications queue with Supabase DB webhook (`/api/webhooks/compliment-approved`) — eliminates ~1 min notification lag
 
 ### Trending Wall *Skip this for the current project*
 - [ ] Public feed page: /trending
@@ -125,11 +125,12 @@
 - [ ] API authentication middleware
 
 ### Testing
-- [ ] Unit tests for moderation logic
+- [x] Unit tests for moderation logic (Vitest — `__tests__/api/workers/moderation.test.ts`)
+- [x] Unit tests for webhook endpoint (Vitest — `__tests__/api/webhooks/compliment-approved.test.ts`)
 - [ ] Integration tests for API routes
 - [x] E2E tests for user flows
 - [ ] Load testing for database queries
-- [ ] Groq API mock for testing
+- [x] Groq API mock for testing
 
 ### Monitoring
 - [ ] Set up error tracking (Sentry)
