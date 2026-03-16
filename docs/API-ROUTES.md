@@ -2,7 +2,7 @@
 
 ## Overview
 
-All API routes are located in `app/api/` and follow Next.js 15 App Router conventions.
+All API routes are located in `app/api/` and follow Next.js 16 App Router conventions.
 
 ---
 
@@ -16,7 +16,8 @@ Register a new user.
 ```json
 {
   "email": "alice@example.com",
-  "password": "securepassword123"
+  "password": "securepassword123",
+  "username": "alice"
 }
 ```
 
@@ -27,7 +28,7 @@ Register a new user.
   "user": {
     "id": "550e8400-e29b-41d4-a716-446655440000",
     "email": "alice@example.com",
-    "username": "alice_sparkle_42"
+    "username": "alice"
   }
 }
 ```
@@ -35,11 +36,12 @@ Register a new user.
 **Validation:**
 - Email: Valid email format
 - Password: Min 8 characters, max 255 characters
-- Username: Auto-generated using `nanoid` (format: `{random}_sparkle_{number}`)
+- Username (optional): If omitted, auto-generated using `nanoid` (format: `{random}_sparkle_{number}`). If provided, 3–30 characters, alphanumeric + underscores/hyphens, no reserved words.
 
 **Errors:**
-- `400`: Invalid input (email/password validation failed)
+- `400`: Invalid input (email/password/username validation failed)
 - `409`: Email already exists
+- `409`: Username already taken (`code: "USERNAME_TAKEN"`)
 
 ---
 
@@ -264,42 +266,6 @@ Mark a compliment as read.
 
 ---
 
-### POST /api/compliments/[id]/reply (Phase 2)
-
-Reply to a compliment (creates threaded response).
-
-**Path Parameters:**
-- `id`: Parent compliment UUID
-
-**Request Body:**
-```json
-{
-  "message": "Thank you so much! That means a lot to me.",
-  "category": "just_because"
-}
-```
-
-**Response (200):**
-```json
-{
-  "success": true,
-  "replyId": "770e8400-e29b-41d4-a716-446655440002"
-}
-```
-
-**Side Effects:**
-- Creates new compliment with `parentId` set to original compliment
-- `senderId` is the current user (recipient of original)
-- `recipientId` is the sender of original (if not anonymous)
-- Triggers moderation flow
-
-**Errors:**
-- `401`: Not authenticated
-- `403`: Cannot reply to anonymous compliments
-- `404`: Parent compliment not found
-
----
-
 ### GET /api/compliments/trending
 
 Get public compliments for trending wall.
@@ -369,6 +335,34 @@ Get public user profile (for wall pages).
 
 ---
 
+### GET /api/users/check-username
+
+Check whether a username is available (public endpoint, no auth required).
+
+**Query Parameters:**
+- `username` (required): Username to check
+
+**Example Request:**
+```
+GET /api/users/check-username?username=alice
+```
+
+**Response (200):**
+```json
+{
+  "available": true
+}
+```
+
+**Validation:**
+- 3–30 characters, alphanumeric + underscores/hyphens
+- Must not be a reserved word (e.g. `admin`, `api`, `dashboard`, `wall`)
+
+**Errors:**
+- `400`: Invalid username format (fails validation)
+
+---
+
 ### GET /api/users/me/stats
 
 Get current user's stats.
@@ -396,6 +390,7 @@ Update current user's settings.
 **Request Body:**
 ```json
 {
+  "username": "new_username",
   "theme": "ocean",
   "emailNotifications": false
 }
@@ -406,6 +401,7 @@ Update current user's settings.
 {
   "success": true,
   "user": {
+    "username": "new_username",
     "theme": "ocean",
     "emailNotifications": false
   }
@@ -413,43 +409,51 @@ Update current user's settings.
 ```
 
 **Validation:**
+- `username` (optional): 3–30 characters, alphanumeric + underscores/hyphens, no reserved words
 - `theme` (optional): One of: `default`, `sunset`, `ocean`
 - `emailNotifications` (optional): Boolean
 
 **Errors:**
 - `400`: Invalid input
 - `401`: Not authenticated
+- `409`: Username already taken (`code: "USERNAME_TAKEN"`)
 
 ---
 
-## AI Routes
+## Webhook Routes
 
-### POST /api/ai/generate-response (Internal/Future)
+### POST /api/webhooks/compliment-approved
 
-Generate AI-suggested response to a compliment.
+Supabase DB webhook — called when a compliment's `moderation_status` changes to `approved`.
 
-**Request Body:**
+**Headers:**
+- `Authorization: Bearer <WEBHOOK_SECRET>` (set in Supabase webhook config via `x-webhook-secret`)
+
+**Request Body** (sent by Supabase):
 ```json
 {
-  "complimentText": "Your presentation yesterday was inspiring!",
-  "category": "professional"
+  "type": "UPDATE",
+  "table": "compliments",
+  "record": {
+    "id": "660e8400-e29b-41d4-a716-446655440001",
+    "recipient_id": "550e8400-e29b-41d4-a716-446655440000",
+    "moderation_status": "approved"
+  }
 }
 ```
 
 **Response (200):**
 ```json
-{
-  "suggestedReply": "Thank you! I put a lot of effort into making it clear and engaging. Your feedback means a lot!"
-}
+{ "ok": true }
 ```
 
-**Notes:**
-- Uses Groq API to generate contextual response
-- Future feature, not MVP
+**Side Effects:**
+- Increments recipient `totalReceived`
+- Triggers Soketi push notification to `private-user-{recipientId}`
 
 **Errors:**
-- `401`: Not authenticated
-- `500`: AI generation failed
+- `401`: Missing or invalid Bearer token
+- `400`: Unexpected payload shape
 
 ---
 
@@ -543,22 +547,6 @@ All errors follow this format:
 - **POST /api/auth/signup**: 5 requests/hour per IP
 - **POST /api/auth/signin**: 10 requests/hour per IP
 
-**Rate Limit Headers:**
-```
-X-RateLimit-Limit: 100
-X-RateLimit-Remaining: 95
-X-RateLimit-Reset: 1678550400
-```
-
-**Rate Limit Response (429):**
-```json
-{
-  "error": "Rate limit exceeded",
-  "code": "RATE_LIMIT_EXCEEDED",
-  "retryAfter": 3600
-}
-```
-
 ---
 
 ## Pagination
@@ -600,39 +588,6 @@ All routes are implicitly v1. Future versions will use URL prefixing:
 ### Breaking Changes Policy
 - Minor changes (new fields): No version bump
 - Breaking changes (removed fields, changed behavior): New version
-
----
-
-## CORS Configuration
-
-```typescript
-// middleware.ts
-export const config = {
-  matcher: '/api/:path*',
-};
-
-export function middleware(req: NextRequest) {
-  const res = NextResponse.next();
-  res.headers.set('Access-Control-Allow-Origin', process.env.NEXT_PUBLIC_APP_URL);
-  res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE');
-  res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  return res;
-}
-```
-
----
-
-## Security Headers
-
-All API responses include:
-
-```
-Strict-Transport-Security: max-age=31536000; includeSubDomains
-X-Content-Type-Options: nosniff
-X-Frame-Options: DENY
-X-XSS-Protection: 1; mode=block
-Content-Security-Policy: default-src 'self'
-```
 
 ---
 

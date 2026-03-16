@@ -8,6 +8,7 @@
 - [x] Implement sign-in page
 - [x] Add protected route middleware
 - [x] Generate unique username/slug on signup
+- [x] Allow custom username at signup (optional, falls back to auto-generated)
 - [x] Create user profile model (username, email, createdAt)
 
 ### Send/Receive Compliments - Core Flow
@@ -15,7 +16,7 @@
 - [x] API route: POST /api/compliments/send
 - [x] API route: GET /api/compliments/inbox
 - [x] Compliment send form (category selection, message input)
-- [x] Compliment inbox view (list of received compliments)
+- [x] Compliment inbox/dashboard view (`/inbox` renamed to `/dashboard`)
 - [x] User wall page: /wall/[username] (public compliment sending)
 
 ### Basic Reveal Animation
@@ -94,6 +95,7 @@
 ### Analytics
 - [x] Track: compliments sent, received, read
 - [x] Shareable stats page: "You've made 23 people smile this month"
+- [x] Username editing from dashboard settings
 - [ ] OG image generation for stats
 - [ ] Insights: most active day, favorite category
 
@@ -123,6 +125,7 @@
 
 ### Testing
 - [x] Unit tests for webhook endpoint (Vitest — `__tests__/api/webhooks/compliment-approved.test.ts`)
+- Note: `__tests__/api/workers/moderation.test.ts` was removed when the moderation worker was replaced by inline `after()` + Supabase webhook
 - [ ] Integration tests for API routes
 - [x] E2E tests for user flows
 - [ ] Load testing for database queries

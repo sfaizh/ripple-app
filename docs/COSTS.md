@@ -77,8 +77,8 @@ This document analyzes costs for running Ripple as a hobby project with 100-1000
 - Unlimited messages
 - No usage caps
 
-**Hosting on fly.io Free Tier:**
-- 3 shared CPU VMs (160 GB outbound/month)
+**Hosting on Railway:**
+- Deployed and running on Railway (free tier)
 - Perfect for Soketi deployment
 
 **Usage Estimates:**
@@ -94,7 +94,7 @@ This document analyzes costs for running Ripple as a hobby project with 100-1000
 - Each compliment = 1 WebSocket message
 - Average 5 compliments sent per user per day
 
-**Verdict**: ✅ **FREE** for unlimited users (self-hosted on fly.io)
+**Verdict**: ✅ **FREE** for unlimited users (self-hosted on Railway)
 
 **Why Better Than Pusher:**
 - ✅ No concurrent connection limits
@@ -245,7 +245,7 @@ Use instead:
 - No concurrent connection limits
 - No message volume limits
 - Pusher-compatible API (drop-in replacement)
-- Self-hosted on fly.io free tier
+- Self-hosted on Railway (free tier)
 - One-time setup, runs forever
 
 **Setup Time**: 5 minutes
@@ -261,55 +261,11 @@ Use instead:
 
 ---
 
-## Implementation: Soketi on fly.io
-
-### One-Time Setup (5 minutes)
-
-```bash
-# Install fly CLI
-curl -L https://fly.io/install.sh | sh
-
-# Login to fly.io
-fly auth login
-
-# Create soketi app
-fly launch --image 'quay.io/soketi/soketi:latest-16-alpine' --name ripple-soketi
-
-# Set environment variables
-fly secrets set \
-  SOKETI_DEFAULT_APP_ID=app-id-123 \
-  SOKETI_DEFAULT_APP_KEY=app-key-123456 \
-  SOKETI_DEFAULT_APP_SECRET=secret-key-123456
-
-# Deploy
-fly deploy
-```
-
-### Add to Your App
-
-```typescript
-// lib/soketi/server.ts
-import Pusher from 'pusher'; // Soketi is Pusher-compatible!
-
-export const soketiServer = new Pusher({
-  appId: process.env.SOKETI_APP_ID!,
-  key: process.env.NEXT_PUBLIC_SOKETI_KEY!,
-  secret: process.env.SOKETI_SECRET!,
-  host: process.env.NEXT_PUBLIC_SOKETI_HOST!, // ripple-soketi.fly.dev
-  port: 6001,
-  useTLS: true,
-});
-```
-
-**That's it!** Works exactly like Pusher, costs $0/month.
-
----
-
 ## Scaling Plan
 
 ### Phase 1: MVP (0-500 users) - $0/month
-- Supabase free tier (includes pgmq queues)
-- Soketi on fly.io free tier
+- Supabase free tier
+- Soketi on Railway (free tier)
 - Skip email notifications
 - All core features working
 
@@ -324,12 +280,12 @@ export const soketiServer = new Pusher({
   - 8 GB database
   - 100 GB egress
   - 7-day point-in-time recovery
-- Soketi still free (scale horizontally on fly.io)
+- Soketi still free (scale horizontally on Railway)
 - Still skip per-compliment emails (use in-app)
 
 ### Phase 4: Heavy Scale (10K+ users) - $50-100/month
 - Supabase Pro: $25/month
-- Soketi: Still free or upgrade fly.io ($5-10/month for dedicated)
+- Soketi: Still free or upgrade Railway ($5-10/month for dedicated)
 - Optional: Resend Pro if adding emails ($20/month)
 - Optional: Groq pay-as-you-go if free tier exceeded
 

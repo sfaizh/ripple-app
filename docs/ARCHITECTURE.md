@@ -55,7 +55,7 @@ Ripple is a Next.js application. Moderation runs inline (non-blocking) using Nex
 ## Tech Stack
 
 ### Frontend
-- **Framework**: Next.js 15 (App Router)
+- **Framework**: Next.js 16 (App Router)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
 - **UI Components**: shadcn/ui (Radix UI primitives)
@@ -68,7 +68,7 @@ Ripple is a Next.js application. Moderation runs inline (non-blocking) using Nex
 - **ORM**: Drizzle ORM
 - **Authentication**: Supabase Auth
 - **Moderation**: Next.js `after()` — inline, non-blocking, no separate queue needed
-- **Real-time**: Soketi (self-hosted on fly.io)
+- **Real-time**: Soketi (self-hosted on Railway)
 - **AI**: Groq API (llama-3.1-8b-instant)
 - **Email**: Resend (optional)
 
@@ -114,7 +114,7 @@ User → Send Form → POST /api/compliments/send
 ### Flow 2: Receiving & Revealing
 
 ```
-User navigates to /inbox
+User navigates to /dashboard
                          │
                          └─ GET /api/compliments/inbox
                               │
@@ -135,13 +135,21 @@ User clicks to reveal
 ### Flow 3: Real-Time Notifications
 
 ```
-after() callback in POST /api/compliments/send (on approval):
+after() callback in POST /api/compliments/send:
                          │
-                         └─ soketiServer.trigger(
-                                   channel: "private-user-{recipientId}",
-                                   event: "new-compliment",
-                                   data: { message: "You have a secret compliment waiting" }
-                                 )
+                         ├─ moderateWithGroq(message)
+                         └─ Update compliment status (approved/rejected) in DB
+
+Supabase DB webhook (fires on status → "approved"):
+                         │
+                         └─ POST /api/webhooks/compliment-approved
+                              │
+                              ├─ Increment recipient totalReceived
+                              └─ soketiServer.trigger(
+                                          channel: "private-user-{recipientId}",
+                                          event: "new-compliment",
+                                          data: { message: "You have a secret compliment waiting" }
+                                        )
 
 Frontend: app/layout.tsx
                          │
@@ -230,7 +238,7 @@ Vercel Cron (midnight UTC) → POST /api/workers/daily-streak
 ### Phase 2 (Growth)
 - Add Redis caching (Upstash) for trending wall
 - Implement CDN for static assets
-- Scale Soketi horizontally on fly.io
+- Scale Soketi horizontally on Railway
 - Expected load: 1K-10K users
 
 ### Phase 3 (Scale)
@@ -278,11 +286,10 @@ Vercel Cron (midnight UTC) → POST /api/workers/daily-streak
         ┌───────────┼───────────┬──────────┐
         │           │           │          │
         ▼           ▼           ▼          ▼
-┌──────────┐  ┌──────────┐  ┌────────┐
-│Supabase  │  │  Soketi  │  │fly.io  │
-│(Postgres │  │ (fly.io) │  │ (host) │
-│ + pgmq)  │  │          │  │        │
-└──────────┘  └──────────┘  └────────┘
+┌──────────┐  ┌──────────┐
+│Supabase  │  │  Soketi  │
+│(Postgres)│  │(Railway) │
+└──────────┘  └──────────┘
 ```
 
 ### CI/CD Pipeline
@@ -290,7 +297,7 @@ Vercel Cron (midnight UTC) → POST /api/workers/daily-streak
 2. Vercel auto-deploys to production
 3. Database migrations run via `supabase db push` or `pnpm drizzle-kit push`
 4. Worker routes deployed automatically with Vercel (no separate step)
-5. Soketi running on fly.io (no deployment needed)
+5. Soketi running on Railway (no deployment needed)
 6. Smoke tests run post-deployment
 
 ---
@@ -352,7 +359,7 @@ Vercel Edge Network
 
 ### 1. Soketi vs. Pusher
 **Chosen**: Soketi (self-hosted)
-- ✅ Free (self-hosted on fly.io)
+- ✅ Free (self-hosted on Railway)
 - ✅ Pusher-compatible API (drop-in replacement)
 - ✅ No cost scaling with users
 - ❌ Requires managing deployment

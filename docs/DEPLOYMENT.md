@@ -322,6 +322,7 @@ vercel --prod
 2. **Send compliment**: Use wall link
 3. **Check moderation**: Within ~2 seconds, check Vercel function logs for `after()` moderation output
 4. **Check real-time**: Verify Soketi notification appears in recipient browser
+5. **Navigate to dashboard**: Go to `/dashboard` and confirm compliment appears
 6. **Reveal compliment**: Click to reveal
 7. **Check database**: Verify `isRead = true`
 
@@ -461,7 +462,7 @@ NEXT_PUBLIC_SENTRY_DSN=your_sentry_dsn_here
 
 ### 13.1 Database Backups
 
-Vercel Postgres includes:
+Supabase includes:
 - **Daily automated backups** (7-day retention)
 - Point-in-time recovery
 
@@ -526,7 +527,6 @@ jobs:
 - [ ] Production deployment successful
 - [ ] Test user flow (signup → send → receive → reveal)
 - [ ] Test AI moderation (toxic content rejected)
-- [ ] Test email delivery (Resend)
 - [ ] Test real-time notifications (Soketi)
 - [ ] Daily streak worker responding (test with curl + WORKER_SECRET)
 - [ ] Lighthouse score > 85 (performance)
@@ -575,8 +575,7 @@ jobs:
 **Solution**:
 1. Check Resend dashboard > "API Keys" - verify key is active
 2. Check Resend dashboard > "Domains" - verify domain is verified
-3. Check Vercel logs for `/api/workers/notifications` errors
-4. Test email manually:
+3. Test email manually:
    ```bash
    curl https://api.resend.com/emails \
      -H "Authorization: Bearer $RESEND_API_KEY" \
@@ -636,7 +635,6 @@ Your Ripple app is now live in production! 🎉
 **Support Resources:**
 - Vercel Docs: https://vercel.com/docs
 - Vercel Cron Docs: https://vercel.com/docs/cron-jobs
-- Supabase pgmq Docs: https://supabase.com/docs/guides/database/extensions/pgmq
 - Soketi Docs: https://docs.soketi.app
 - Railway Docs: https://docs.railway.app
 - Resend Docs: https://resend.com/docs

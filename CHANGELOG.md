@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.2.0] - 2026-03-16
+
+### Documentation
+- Updated `docs/API-ROUTES.md`: Fixed Next.js version (15 → 16), added optional `username` field to `POST /api/auth/signup` and `PATCH /api/users/me/settings`, added `GET /api/users/check-username` endpoint docs, added `POST /api/webhooks/compliment-approved` webhook docs, removed unimplemented Phase 2 routes (`POST /api/compliments/[id]/reply`, `POST /api/ai/generate-response`), removed aspirational CORS/Security Headers/Rate Limit sections
+- Updated `docs/ARCHITECTURE.md`: Fixed Next.js version (15 → 16), changed all Soketi references from fly.io → Railway, updated Flow 2 (`/inbox` → `/dashboard`), updated Flow 3 to show Supabase webhook + Soketi push chain
+- Updated `docs/DEPLOYMENT.md`: Fixed Step 13.1 (Vercel Postgres → Supabase backups), removed stale `/api/workers/notifications` reference from troubleshooting, removed email delivery test from checklist, updated Step 9.1 to reference `/dashboard`, removed pgmq docs link
+- Updated `docs/ENVIRONMENT.md`: Renamed all env vars (`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` → `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SECRET_API_KEY` → `SUPABASE_SERVICE_ROLE_KEY`), updated Soketi host examples (fly.dev → railway.app), removed cron-job.org references, updated Zod schemas and TypeScript types
+- Updated `docs/TODO.md`: Marked custom username, username edit, and `/inbox` → `/dashboard` rename as complete; added note about deleted moderation worker test
+- Updated `docs/COSTS.md`: Changed all Soketi references from fly.io → Railway, removed "Implementation: Soketi on fly.io" section with CLI commands, removed pgmq mention from Phase 1
+
 ## [1.1.0] - 2026-03-13
 
 ### Added

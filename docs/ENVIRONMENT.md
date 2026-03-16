@@ -24,8 +24,8 @@ Committed to Git as a template for developers.
 ```bash
 # Database (Supabase)
 NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
-SUPABASE_SECRET_API_KEY=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
 
 # Worker Authentication
 WORKER_SECRET=
@@ -65,27 +65,27 @@ NODE_ENV=development
 1. [app.supabase.com](https://app.supabase.com) > Your project
 2. Settings > API > Project URL
 
-#### `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
-- **Description**: Supabase publishable API key (client-safe)
+#### `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- **Description**: Supabase anonymous API key (client-safe)
 - **Used by**: Supabase client (browser + server)
 - **Required**: ✅ Yes
 - **Public**: ✅ Yes (safe to expose - respects RLS policies)
 
 **Where to get**:
-1. Supabase dashboard > Settings > API > Publishable key
+1. Supabase dashboard > Settings > API > `anon` `public` key
 
-**Note**: This key is safe to use in the browser because it respects Row Level Security (RLS) policies. Use this instead of the deprecated `anon_key` which relies on JWT secret rotation.
+**Note**: This key is safe to use in the browser because it respects Row Level Security (RLS) policies.
 
-#### `SUPABASE_SECRET_API_KEY`
-- **Description**: Supabase secret API key (server-only, bypasses RLS)
-- **Used by**: Server-side operations that need to bypass RLS
+#### `SUPABASE_SERVICE_ROLE_KEY`
+- **Description**: Supabase service role key (server-only, bypasses RLS)
+- **Used by**: Server-side operations that need to bypass RLS (admin/RPC calls)
 - **Required**: ✅ Yes (for admin operations)
 - **Public**: ❌ No (keep secret! Has full database access)
 
 **Where to get**:
-1. Supabase dashboard > Settings > API > Secret key
+1. Supabase dashboard > Settings > API > `service_role` key
 
-**Security Warning**: Never expose this key to the browser! Only use in API routes and server components. Using publishable/secret keys is safer than service_role keys because they're not based on the JWT secret and won't cause issues during JWT secret rotation.
+**Security Warning**: Never expose this key to the browser! Only use in API routes and server components. Must be the legacy JWT (`eyJ...`) format — the Supabase JS SDK does not support the newer `sb_secret_*` format.
 
 ---
 
@@ -105,7 +105,6 @@ openssl rand -base64 32
 
 **Where used**:
 - Vercel Cron: Automatically adds `Authorization: Bearer <WORKER_SECRET>` header for `/api/workers/daily-streak`
-- cron-job.org: You manually add `Authorization: Bearer <WORKER_SECRET>` header for `/api/workers/moderation` and `/api/workers/notifications`
 
 **Note**: This prevents public access to worker endpoints.
 
@@ -124,7 +123,7 @@ openssl rand -base64 32
 
 #### `NEXT_PUBLIC_SOKETI_HOST`
 - **Description**: Soketi WebSocket server host
-- **Example**: `your-app.fly.dev` or `localhost`
+- **Example**: `your-app.up.railway.app` or `localhost`
 - **Used by**: Soketi client SDK
 - **Required**: ✅ Yes
 - **Public**: ✅ Yes
@@ -152,11 +151,11 @@ openssl rand -base64 32
 
 **Where to get**:
 - Self-hosted Soketi: You set these values in your Soketi deployment config
-- See deployment guide for Soketi setup on fly.io
+- See deployment guide for Soketi setup on Railway
 
-**Soketi Config Example** (on fly.io):
+**Soketi Config Example** (on Railway):
 ```bash
-# fly.toml or environment variables
+# Railway environment variables
 SOKETI_DEFAULT_APP_ID=app-id-123
 SOKETI_DEFAULT_APP_KEY=app-key-123456
 SOKETI_DEFAULT_APP_SECRET=secret-key-123456
@@ -229,7 +228,7 @@ SOKETI_DEFAULT_APP_SECRET=secret-key-123456
 ### Server-side Only
 These variables are **only** accessible in server components, API routes, and server actions:
 
-- `SUPABASE_SECRET_API_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
 - `WORKER_SECRET`
 - `SOKETI_APP_ID`
 - `SOKETI_SECRET`
@@ -240,7 +239,7 @@ These variables are **only** accessible in server components, API routes, and se
 These variables are **exposed to the browser** (must have `NEXT_PUBLIC_` prefix):
 
 - `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `NEXT_PUBLIC_SOKETI_KEY`
 - `NEXT_PUBLIC_SOKETI_HOST`
 - `NEXT_PUBLIC_SOKETI_PORT`
@@ -256,8 +255,8 @@ These variables are **exposed to the browser** (must have `NEXT_PUBLIC_` prefix)
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_publishable_key
-SUPABASE_SECRET_API_KEY=your_secret_api_key
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
 WORKER_SECRET=your_random_worker_secret
 
@@ -278,13 +277,13 @@ NODE_ENV=development
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_publishable_key
-SUPABASE_SECRET_API_KEY=your_secret_api_key
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 
 WORKER_SECRET=your_random_worker_secret
 
 NEXT_PUBLIC_SOKETI_KEY=app-key-prod
-NEXT_PUBLIC_SOKETI_HOST=your-soketi.fly.dev
+NEXT_PUBLIC_SOKETI_HOST=your-soketi.up.railway.app
 NEXT_PUBLIC_SOKETI_PORT=6001
 SOKETI_APP_ID=app-id-prod
 SOKETI_SECRET=secret-prod
@@ -345,9 +344,8 @@ When adding variables in Vercel dashboard, set scopes:
 
 **Supabase**:
 - Enable Row Level Security (RLS) policies
-- Never use secret API key in client code
-- Use publishable key for all client operations
-- Use publishable/secret keys instead of deprecated anon/service_role keys (safer during JWT secret rotation)
+- Never use `SUPABASE_SERVICE_ROLE_KEY` in client code
+- Use `NEXT_PUBLIC_SUPABASE_ANON_KEY` for all client operations
 
 ### 5. Monitor Usage
 - Check Vercel logs for leaked secrets
@@ -368,8 +366,8 @@ import { z } from 'zod';
 const envSchema = z.object({
   // Supabase
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
-  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().startsWith('sb_pb_'),
-  SUPABASE_SECRET_API_KEY: z.string().startsWith('sb_secret_'),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
 
   // Worker
   WORKER_SECRET: z.string().min(16),
@@ -409,8 +407,8 @@ declare namespace NodeJS {
   interface ProcessEnv {
     // Supabase
     NEXT_PUBLIC_SUPABASE_URL: string;
-    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: string;
-    SUPABASE_SECRET_API_KEY: string;
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: string;
+    SUPABASE_SERVICE_ROLE_KEY: string;
 
     // Worker
     WORKER_SECRET: string;
@@ -471,11 +469,11 @@ NEXT_PUBLIC_SOKETI_KEY=abc123
 **Solution**:
 1. Check Supabase dashboard > Settings > API
 2. Copy URL and keys exactly
-3. Verify `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` is the publishable key (starts with `sb_pb_`)
+3. Verify `NEXT_PUBLIC_SUPABASE_ANON_KEY` is the `anon` `public` key
 4. Test connection:
    ```bash
    curl https://your-project.supabase.co/rest/v1/ \
-     -H "apikey: your_publishable_key"
+     -H "apikey: your_anon_key"
    ```
 
 ### Issue: Soketi connection failed
@@ -483,7 +481,7 @@ NEXT_PUBLIC_SOKETI_KEY=abc123
 **Cause**: Soketi not running or incorrect host/port
 
 **Solution**:
-1. Verify Soketi is running: `curl https://your-soketi.fly.dev/health`
+1. Verify Soketi is running: `curl https://your-soketi.up.railway.app/health`
 2. Check `NEXT_PUBLIC_SOKETI_HOST` matches your deployment
 3. Verify port is `6001` (default)
 4. Check browser console for WebSocket errors
@@ -495,8 +493,8 @@ NEXT_PUBLIC_SOKETI_KEY=abc123
 ```bash
 # Supabase (3 vars)
 NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
-SUPABASE_SECRET_API_KEY=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
 
 # Worker Auth (1 var)
 WORKER_SECRET=
